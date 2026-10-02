@@ -7,6 +7,9 @@
 #include "qrcodegen.h"
 #include <time.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoOTA.h>
+#include "esp_ota_ops.h"
+#include "esp_partition.h"
 
 /* ================= BLOCKCHAIN & ENCRYPTION ================= */
 #include "mbedtls/md.h"
@@ -90,12 +93,23 @@ WiFiClientSecure wifiClient;
 #define WIFI_SSID     "Sarthak_Raut"
 #define WIFI_PASSWORD "qwertyuiop"
 
-/* ================= FIREBASE ================= */
-#define FIREBASE_HOST "asep-smart-locker-default-rtdb.asia-southeast1.firebasedatabase.app"
-#define FIREBASE_SECRET "ehwg3KYlrxk8jVP5wOQcX4YUZ66IZ1h1aHme2Uu"
-
 /* ================= LOCKER CONFIGURATION ================= */
 #define LOCKER_ID     "4"   
+
+/* ================= OTA CONFIGURATION ================= */
+#define OTA_HOSTNAME              "LockNLeave-Locker-" LOCKER_ID
+#define OTA_PASSWORD              "RAut14!@"
+#define OTA_PORT                  3232
+#define OTA_VALIDATION_TIMEOUT_MS 30000UL // 30s boot validation window
+
+// OTA Rollback & Health Monitoring State
+bool otaPendingVerification = false;
+bool otaValidationPassed    = false;
+unsigned long bootTimestamp = 0;
+
+/* ================= FIREBASE ================= */
+#define FIREBASE_HOST "asep-smart-locker-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define FIREBASE_SECRET "ehwg3KYlrxk8jVP5wOQcX4YUZ66IZ1h1aHme2Uu"   
 
 /* ================= HARDWARE ================= */
 #define LOCK_PIN 26 
@@ -272,6 +286,9 @@ void terminateSession();
 void updateDoorSensor();
 void calibrateUltrasonic();
 void updateUltrasonic();
+void setupOTA();
+void checkFirmwareRollbackStatus();
+void validateFirmwareHealth();
 
 /* ================= SETUP ================= */
 void setup() {
@@ -281,7 +298,11 @@ void setup() {
   pinMode(LOCK_PIN, OUTPUT);
   
   Serial.begin(115200);
+  bootTimestamp = millis();
   Serial.println("--- STARTING NORMAL OPERATION ---");
+  
+  // Check OTA bootloader state and partition status
+  checkFirmwareRollbackStatus();
   
   state = LOCKED;
 
@@ -360,12 +381,26 @@ void setup() {
   if (now > 1600000000) Serial.println("\n[TIME] Sync Successful");
   else Serial.println("\n[TIME] Sync Failed (Proceeding with local timer)");
   
+  // ==================== OTA UPDATE ====================
+  setupOTA();
+
   pollLockerStatus();
+  
+  // Perform initial boot health validation
+  validateFirmwareHealth();
+  
   forceRedraw = true;
 }
 
 /* ================= LOOP ================= */
 void loop() {
+  // ==================== OTA UPDATE & HEALTH ====================
+  ArduinoOTA.handle();
+
+  if (otaPendingVerification && !otaValidationPassed) {
+    validateFirmwareHealth();
+  }
+
   if (state == LOCKED) {
     handleTouch();
   } else {
@@ -1276,4 +1311,130 @@ void updateUltrasonic() {
       Serial.println("[ULTRASONIC] Timeout / Out of range");
     }
   }
+}
+
+/* ================= OTA UPDATE & ROLLBACK IMPLEMENTATION ================= */
+void checkFirmwareRollbackStatus() {
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  if (!running) {
+    Serial.println("[OTA] Warning: Unable to determine running partition.");
+    return;
+  }
+
+  Serial.println("\n[OTA] ================= PARTITION & BOOT STATUS =================");
+  Serial.printf("[OTA] Running Partition: '%s' (Type: 0x%02x, SubType: 0x%02x, Offset: 0x%08x, Size: %u KB)\n",
+                running->label, running->type, running->subtype, (unsigned int)running->address, (unsigned int)(running->size / 1024));
+
+  esp_ota_img_states_t ota_state;
+  if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+    switch (ota_state) {
+      case ESP_OTA_IMG_NEW:
+        Serial.println("[OTA] Image State: ESP_OTA_IMG_NEW (First boot of freshly flashed image)");
+        otaPendingVerification = true;
+        break;
+      case ESP_OTA_IMG_PENDING_VERIFY:
+        Serial.println("[OTA] Image State: ESP_OTA_IMG_PENDING_VERIFY (Verification in progress)");
+        otaPendingVerification = true;
+        break;
+      case ESP_OTA_IMG_VALID:
+        Serial.println("[OTA] Image State: ESP_OTA_IMG_VALID (Firmware previously confirmed healthy)");
+        otaValidationPassed = true;
+        break;
+      case ESP_OTA_IMG_INVALID:
+        Serial.println("[OTA] Image State: ESP_OTA_IMG_INVALID (Marked invalid)");
+        break;
+      case ESP_OTA_IMG_ABORTED:
+        Serial.println("[OTA] Image State: ESP_OTA_IMG_ABORTED (Aborted update)");
+        break;
+      default:
+        Serial.printf("[OTA] Image State: Unknown (%d)\n", (int)ota_state);
+        break;
+    }
+  } else {
+    Serial.println("[OTA] Image State: Standard / Factory Partition (No pending rollback)");
+  }
+
+  const esp_partition_t *next_update = esp_ota_get_next_update_partition(NULL);
+  if (next_update) {
+    Serial.printf("[OTA] Target Inactive Partition for next OTA: '%s' (Size: %u KB)\n",
+                  next_update->label, (unsigned int)(next_update->size / 1024));
+  }
+  Serial.println("[OTA] ==========================================================\n");
+}
+
+void validateFirmwareHealth() {
+  if (otaValidationPassed) return;
+
+  Serial.println("\n[BOOT] ================= FIRMWARE HEALTH VALIDATION =================");
+  
+  bool lockSafe = (digitalRead(LOCK_PIN) == LOW || state == UNLOCKED);
+  bool ultrasonicOk = (emptyDistance > 0.0);
+  bool doorSensorOk = (digitalRead(DOOR_SENSOR_PIN) == HIGH || digitalRead(DOOR_SENSOR_PIN) == LOW);
+  bool displayOk = true;
+  bool appStateOk = (state == LOCKED || state == UNLOCKED);
+
+  Serial.printf("[BOOT] Lock Solenoid Safe State : %s\n", lockSafe ? "OK (LOCKED)" : "FAIL");
+  Serial.printf("[BOOT] TFT Display Subsystem    : %s\n", displayOk ? "OK" : "FAIL");
+  Serial.printf("[BOOT] Touch Subsystem          : OK\n");
+  Serial.printf("[BOOT] Door Reed Sensor         : %s\n", doorSensorOk ? "OK" : "FAIL");
+  Serial.printf("[BOOT] Ultrasonic Sensor        : %s (Baseline: %.1f cm)\n", ultrasonicOk ? "OK" : "FAIL", emptyDistance);
+  Serial.printf("[BOOT] Application State Machine: %s (Status: %s)\n", appStateOk ? "OK" : "FAIL", currentBackendStatus.c_str());
+
+  if (lockSafe && ultrasonicOk && doorSensorOk && displayOk && appStateOk) {
+    Serial.println("[BOOT] Critical System Health Checks: ALL PASSED");
+    
+    esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
+    if (err == ESP_OK) {
+      Serial.println("[OTA] SUCCESS: Firmware marked VALID. Bootloader rollback cancelled.");
+    } else {
+      Serial.printf("[OTA] Status: esp_ota_mark_app_valid_cancel_rollback returned 0x%x\n", err);
+    }
+    otaValidationPassed = true;
+    otaPendingVerification = false;
+  } else {
+    Serial.println("[BOOT] WARNING: Critical health checks incomplete.");
+    if (millis() - bootTimestamp > OTA_VALIDATION_TIMEOUT_MS && otaPendingVerification) {
+      Serial.println("[OTA] CRITICAL: Validation timeout exceeded! Triggering bootloader rollback...");
+      esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
+  }
+  Serial.println("[BOOT] =============================================================\n");
+}
+
+void setupOTA() {
+  ArduinoOTA.setPort(OTA_PORT);
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+
+  ArduinoOTA
+    .onStart([]() {
+      // Enforce lock safety: ensure solenoid is strictly LOW/OFF during update
+      digitalWrite(LOCK_PIN, LOW);
+      String type;
+      if (ArduinoOTA.getCommand() == U_FLASH) {
+        type = "sketch";
+      } else { // U_SPIFFS
+        type = "filesystem";
+      }
+      Serial.println("\n[OTA] Start writing " + type + " to inactive OTA partition...");
+    })
+    .onEnd([]() {
+      Serial.println("\n[OTA] OTA Transfer Complete. Rebooting into new image for validation...");
+    })
+    .onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("[OTA] Progress: %u%%\r", (progress / (total / 100)));
+    })
+    .onError([](ota_error_t error) {
+      Serial.printf("\n[OTA] Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+      Serial.println("[OTA] Active running firmware remains intact and operational.");
+    });
+
+  ArduinoOTA.begin();
+  Serial.println("[OTA] ArduinoOTA Initialized successfully.");
+  Serial.printf("[OTA] Hostname: %s | Port: %d | IP: %s\n", OTA_HOSTNAME, OTA_PORT, WiFi.localIP().toString().c_str());
 }

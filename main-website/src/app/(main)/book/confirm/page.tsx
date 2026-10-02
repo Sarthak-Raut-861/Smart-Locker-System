@@ -32,7 +32,8 @@ function BookingConfirmInner() {
   const { user, initAuth } = useAuthStore();
   const { cleanupExpiredLocker } = useLockerStore();
 
-  const isBypassActive = process.env.NEXT_PUBLIC_BYPASS_PAYMENT === 'true' || searchParams.get('bypass') === 'true';
+  // Temporarily bypass Razorpay payment gateway for testing
+  const isBypassActive = true; // process.env.NEXT_PUBLIC_BYPASS_PAYMENT === 'true' || searchParams.get('bypass') === 'true';
 
   const [selectedLocker, setSelectedLocker] = useState<any>(null);
   const [duration, setDuration] = useState(1); // Hours
