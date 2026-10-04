@@ -70,8 +70,8 @@ function BookingConfirmInner() {
   const { user, initAuth } = useAuthStore();
   const { cleanupExpiredLocker } = useLockerStore();
 
-  // Temporarily bypass Razorpay payment gateway for testing
-  const isBypassActive = true; // process.env.NEXT_PUBLIC_BYPASS_PAYMENT === 'true' || searchParams.get('bypass') === 'true';
+  // Razorpay Payment Gateway active (can be overridden with ?bypass=true for testing if needed)
+  const isBypassActive = process.env.NEXT_PUBLIC_BYPASS_PAYMENT === 'true' || searchParams.get('bypass') === 'true';
 
   const [selectedLocker, setSelectedLocker] = useState<any>(null);
   const [duration, setDuration] = useState(1); // Hours
@@ -292,7 +292,7 @@ function BookingConfirmInner() {
       const orderData = await orderRes.json();
 
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '', // Needs to be set in env
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_SrydXiOz48heLM',
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Smart Locker System',
