@@ -25,6 +25,23 @@ import { encryptData, hashPIN } from '@/lib/crypto';
 import { syncHardwareAction } from '@/app/actions/syncHardware';
 
 
+// Passenger Pricing Engine: Indicative railway coach locker pricing
+const getJourneyPackagePrice = (size: string = 'Medium', duration: number): number => {
+  const norm = (size || 'Medium').toUpperCase();
+  const matrix: Record<string, Record<number, number>> = {
+    SMALL: { 0.5: 10, 1: 15, 3: 35, 6: 60, 12: 90 },
+    MEDIUM: { 0.5: 15, 1: 25, 3: 55, 6: 95, 12: 140 },
+    LARGE: { 0.5: 20, 1: 40, 3: 85, 6: 150, 12: 220 }
+  };
+  const tier = matrix[norm] || matrix.MEDIUM;
+  if (tier[duration] !== undefined) {
+    return tier[duration];
+  }
+  // Linear calculation for custom precision inputs based on 1h rate
+  const hourlyRate = tier[1] || 25;
+  return Math.round(hourlyRate * duration);
+};
+
 // Inner component that uses useSearchParams (must be inside Suspense)
 function BookingConfirmInner() {
   const router = useRouter();
@@ -54,12 +71,13 @@ function BookingConfirmInner() {
       // Fallback: QR code scan passes ?id=N — pre-select that locker
       const qrId = searchParams.get('id');
       if (qrId) {
+        const numId = Number(qrId);
         const lockerFromQR = {
           id: qrId,
           firestoreId: `locker_${qrId}`,
           status: 'AVAILABLE',
-          price: 70,
-          size: 'Standard'
+          price: numId <= 6 ? 15 : numId > 16 ? 40 : 25,
+          size: numId <= 6 ? 'Small' : numId > 16 ? 'Large' : 'Medium'
         };
         setSelectedLocker(lockerFromQR);
         sessionStorage.setItem("selectedLocker", JSON.stringify(lockerFromQR));
@@ -86,7 +104,7 @@ function BookingConfirmInner() {
             if (msDiff > 0) {
               setLeftBehindTime(msDiff);
               const hoursLeftBehind = msDiff / (1000 * 60 * 60);
-              const rate = selectedLocker.price || 70;
+              const rate = selectedLocker.price || 25;
               setLeftBehindPenalty(Math.ceil(hoursLeftBehind * rate));
             }
           }
@@ -97,12 +115,14 @@ function BookingConfirmInner() {
 
   const calculateSubtotal = () => {
     if (!selectedLocker) return 0;
-    const rate = selectedLocker.price || 70;
+    const basePlanPrice = getJourneyPackagePrice(selectedLocker.size, duration);
     const planStr = duration === 0.5 ? "30min" : `${duration}hr`;
     
-    let baseRate = rate * duration;
+    let baseRate = basePlanPrice;
     if (pricing && pricing[planStr] && pricing._surgeActive) {
       baseRate = pricing[planStr];
+    } else if (pricing?._surgeActive && pricing?.multiplier) {
+      baseRate = Math.round(basePlanPrice * pricing.multiplier);
     }
     
     return baseRate + leftBehindPenalty;
@@ -360,12 +380,12 @@ function BookingConfirmInner() {
               </div>
               <div>
                 <h3 className="text-lg font-black text-white font-outfit uppercase italic leading-none mb-1">Locker #{(selectedLocker?.id) || '--'}</h3>
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Premium Storage</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{selectedLocker?.size || 'Medium'} Tier</span>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-primary font-black text-2xl font-outfit leading-none mb-1">₹{selectedLocker?.price || 70}/hr</div>
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Base Rate</span>
+              <div className="text-primary font-black text-2xl font-outfit leading-none mb-1">₹{selectedLocker?.price || 25}/hr</div>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Indicative Base</span>
             </div>
           </div>
           
@@ -388,25 +408,34 @@ function BookingConfirmInner() {
         {/* Section 2: Duration */}
         <div className="p-8 border-b border-white/5">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" /> Set Duration
-            </h3>
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" /> Journey Duration Package
+              </h3>
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Starting from ₹15/hour • Clean coach luggage storage</p>
+            </div>
             <span className="text-primary font-bold text-xs">{duration} {duration === 1 ? 'Hour' : 'Hours'}</span>
           </div>
-          <div className="grid grid-cols-4 gap-2 mb-6">
-            {[0.5, 1, 3, 6].map((h) => (
-              <button
-                key={h}
-                onClick={() => setDuration(h)}
-                className={`py-3.5 rounded-xl text-xs font-black transition-all uppercase tracking-widest ${
-                  duration === h 
-                  ? 'bg-primary text-white shadow-[0_5px_20px_rgba(99,102,241,0.3)] scale-[1.02]' 
-                  : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'
-                }`}
-              >
-                {h === 0.5 ? '30m' : `${h}h`}
-              </button>
-            ))}
+          <div className="grid grid-cols-5 gap-2 mb-6">
+            {[0.5, 1, 3, 6, 12].map((h) => {
+              const packagePrice = getJourneyPackagePrice(selectedLocker?.size, h);
+              return (
+                <button
+                  key={h}
+                  onClick={() => setDuration(h)}
+                  className={`py-3 rounded-xl text-center transition-all ${
+                    duration === h 
+                    ? 'bg-primary text-white shadow-[0_5px_20px_rgba(99,102,241,0.3)] scale-[1.02]' 
+                    : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'
+                  }`}
+                >
+                  <div className="text-xs font-black uppercase tracking-widest">{h === 0.5 ? '30m' : `${h}h`}</div>
+                  <div className={`text-[9px] font-bold mt-0.5 ${duration === h ? 'text-white/80' : 'text-gray-500'}`}>
+                    ₹{packagePrice}
+                  </div>
+                </button>
+              );
+            })}
           </div>
           <div className="bg-white/2 rounded-xl p-3 flex items-center justify-between border border-white/5">
             <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest ml-1">Precision Adjust (hr)</span>
@@ -435,7 +464,10 @@ function BookingConfirmInner() {
           
           <div className="space-y-4 mb-8">
             <div className="flex justify-between text-xs font-bold uppercase tracking-wide">
-              <span className="text-gray-600">Locker Rental ({duration}h)</span>
+              <div>
+                <span className="text-gray-400">Locker Rental ({duration === 0.5 ? '30m' : `${duration}h`} • {selectedLocker?.size || 'Medium'})</span>
+                <span className="block text-[8px] text-gray-600 font-normal mt-0.5">Hardware, sensors & encrypted PIN included</span>
+              </div>
               <span className="text-white">₹{(subtotal - leftBehindPenalty).toFixed(2)}</span>
             </div>
 

@@ -67,7 +67,7 @@ const HistoryCard = ({ entry }: { entry: any }) => {
         </div>
         <div className="space-y-1 text-right">
           <div className="text-[9px] font-black text-gray-700 uppercase tracking-[0.3em]">Unit Rate</div>
-          <div className="text-xs font-bold text-gray-500 tracking-widest uppercase">₹70/hr</div>
+          <div className="text-xs font-bold text-gray-500 tracking-widest uppercase">₹{entry.rate || 25}/hr</div>
         </div>
       </div>
     </motion.div>

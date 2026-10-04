@@ -10,6 +10,7 @@
 #include <ArduinoOTA.h>
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "driver/gpio.h"
 
 /* ================= BLOCKCHAIN & ENCRYPTION ================= */
 #include "mbedtls/md.h"
@@ -217,6 +218,7 @@ bool forceRedraw = true;
 
 bool terminationMode = false;
 String terminationPIN = "";
+bool systemBooted = false;
 
 long debugDuration = 0;
 long long debugStartTime = 0;
@@ -302,9 +304,14 @@ void validateFirmwareHealth();
 /* ================= SETUP ================= */
 void setup() {
   // --- MINIMAL SAFE START ---
-  // Setting Pin 26 to LOW immediately. This is the standard OFF state.
-  digitalWrite(LOCK_PIN, LOW); 
+  // Clamp LOCK_PIN firmly to LOW with hardware pulldown immediately to suppress power-on floating spikes
+  gpio_reset_pin((gpio_num_t)LOCK_PIN);
+  gpio_set_pull_mode((gpio_num_t)LOCK_PIN, GPIO_PULLDOWN_ONLY);
+  gpio_set_level((gpio_num_t)LOCK_PIN, 0);
+  gpio_set_direction((gpio_num_t)LOCK_PIN, GPIO_MODE_OUTPUT);
   pinMode(LOCK_PIN, OUTPUT);
+  digitalWrite(LOCK_PIN, LOW);
+  state = LOCKED; 
   
   Serial.begin(115200);
   bootTimestamp = millis();
@@ -312,8 +319,6 @@ void setup() {
   
   // Check OTA bootloader state and partition status
   checkFirmwareRollbackStatus();
-  
-  state = LOCKED;
 
   
   pinMode(TOUCH_CLK, OUTPUT);
@@ -398,6 +403,7 @@ void setup() {
   // Perform initial boot health validation
   validateFirmwareHealth();
   
+  systemBooted = true;
   forceRedraw = true;
 }
 
@@ -764,11 +770,24 @@ void pollLockerStatus() {
     const char* st = doc["status"];
     unsigned long long endTs = doc["sessionEnd"].as<unsigned long long>();
     
-    // Check for Remote Commands
+    // Check for Remote Commands (strictly while actively running, never during boot)
     const char* cmd = doc["command"];
     if (cmd && String(cmd) == "OPEN") {
-      Serial.println("*** REMOTE OPEN COMMAND RECEIVED ***");
-      unlockLocker(true);
+      if (!systemBooted) {
+        Serial.println("[BOOT] Suppressed stale OPEN command during boot sequence.");
+        if (WiFi.status() == WL_CONNECTED) {
+          HTTPClient http;
+          http.setReuse(false);
+          String url = "https://" + String(FIREBASE_HOST) + "/" + String(LOCKER_ID) + ".json?auth=" + String(FIREBASE_SECRET);
+          http.begin(wifiClient, url);
+          http.addHeader("Content-Type", "application/json");
+          http.sendRequest("PATCH", "{\"command\":null}");
+          http.end();
+        }
+      } else {
+        Serial.println("*** REMOTE OPEN COMMAND RECEIVED ***");
+        unlockLocker(true);
+      }
     }
     
     // Read timestamps with precision

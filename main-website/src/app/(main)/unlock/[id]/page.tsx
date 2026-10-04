@@ -26,6 +26,17 @@ import { doc, getDoc, updateDoc, onSnapshot, increment, setDoc } from 'firebase/
 import { ref, update, onValue, get } from 'firebase/database';
 import { decryptData } from '@/lib/crypto';
 
+// Passenger Extension Pricing Matrix (Indicative railway coach tariff)
+const getExtensionPrice = (size: string = 'MEDIUM', hours: number): number => {
+  const norm = (size || 'MEDIUM').toUpperCase();
+  const rates: Record<string, Record<number, number>> = {
+    SMALL: { 0.5: 10, 1: 15, 3: 35 },
+    MEDIUM: { 0.5: 15, 1: 25, 3: 55 },
+    LARGE: { 0.5: 20, 1: 40, 3: 85 }
+  };
+  return rates[norm]?.[hours] ?? (rates.MEDIUM[hours] || 25);
+};
+
 export default function UnlockPage() {
   const params = useParams();
   const router = useRouter();
@@ -521,28 +532,44 @@ export default function UnlockPage() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative glass-panel p-8 rounded-[2rem] max-w-sm w-full border-primary/30"
             >
-              <h3 className="text-xl font-black text-white font-outfit uppercase italic mb-6 flex items-center gap-3 tracking-tighter">
-                <Clock className="text-primary w-5 h-5" /> Extend Time
+              <h3 className="text-xl font-black text-white font-outfit uppercase italic mb-1 flex items-center gap-3 tracking-tighter">
+                <Clock className="text-primary w-5 h-5" /> Extend Session
               </h3>
-              <div className="space-y-2 mb-8">
-                {[0.5, 1, 3, 6].map((h) => (
-                  <button
-                    key={h}
-                    disabled={extending}
-                    onClick={() => handleExtend(h)}
-                    className="w-full flex justify-between items-center p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-primary/50 hover:bg-primary/10 transition-all text-left group"
-                  >
-                    <div>
-                      <div className="text-white font-bold text-xs">{h === 0.5 ? '30 Minutes' : `${h} Hours`}</div>
-                      <div className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1">Instant Add-on</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-primary font-black font-outfit text-sm">₹{(h * 70).toFixed(0)}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-gray-700 group-hover:text-primary transition-all" />
-                    </div>
-                  </button>
-                ))}
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-6">
+                Locker Rental → Extension → Final Amount
+              </p>
+              
+              <div className="space-y-2.5 mb-6">
+                {[
+                  { h: 0.5, label: '+30 Minutes', badge: 'Quick Add-on' },
+                  { h: 1, label: '+1 Hour', badge: 'Standard Extension' },
+                  { h: 3, label: '+3 Hours', badge: 'Journey Extension' },
+                ].map(({ h, label, badge }) => {
+                  const numLocker = Number(lockerId);
+                  const currentSize = lockerData?.size || (numLocker <= 6 ? 'Small' : numLocker > 16 ? 'Large' : 'Medium');
+                  const cost = getExtensionPrice(currentSize, h);
+                  return (
+                    <button
+                      key={h}
+                      disabled={extending}
+                      onClick={() => handleExtend(h)}
+                      className="w-full flex justify-between items-center p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-primary/50 hover:bg-primary/10 transition-all text-left group"
+                    >
+                      <div>
+                        <div className="text-white font-bold text-xs">{label}</div>
+                        <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{badge} • {currentSize}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-primary font-black font-outfit text-sm">₹{cost}</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-700 group-hover:text-primary transition-all" />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-[8px] text-gray-500 font-medium text-center mb-6">
+                Clean add-on tariff • Zero IoT or maintenance surcharges
+              </p>
               <button 
                 onClick={() => setShowExtension(false)}
                 className="w-full py-1 text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] hover:text-white transition-colors"

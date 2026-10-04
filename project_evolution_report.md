@@ -38,8 +38,8 @@ The Admin Dashboard acts as the "Nerve Center," transforming raw hardware signal
 - **Live PIN Visibility**: Direct oversight of currently active user PINs and occupancy status.
 
 ### **C. Strategic Pricing Engine**
-- **Base Matrix Management**: Direct control over 30-min, 1-hour, and 3-hour pricing tiers stored in Firestore.
-- **Auto-Dynamic Surge Logic**: An automated system that monitors network occupancy. If demand exceeds a defined threshold (e.g., 90%), a surge multiplier is automatically applied.
+- **Base Matrix Management**: Real-time management over passenger-facing journey packages (1h, 3h, 6h, 12h) and instant extensions (+30 min, +1 hour, +3 hours) configured for railway coach installations.
+- **Auto-Dynamic Surge Logic**: An automated system that monitors network occupancy across coaches. If demand exceeds a defined threshold (e.g., 90%), a surge multiplier is automatically applied without separate line-item fees for IoT or security.
 
 ---
 
@@ -122,5 +122,45 @@ Verify that Firebase RTDB's event loop and the application's synchronization han
 
 ---
 
+## 9. Railway Coach Passenger Pricing & Extension Specification
+
+LockNLeave is engineered primarily for **smart luggage lockers installed inside railway train coaches**. The commercial pricing structure is designed to deliver complete transparency, high passenger convenience, and zero hidden overheads.
+
+### **A. Indicative Passenger-Facing Tariff Matrix**
+
+| Locker Size | Typical Use | 1 Hour | 3 Hours | 6 Hours | 12 Hours |
+|---|---|---:|---:|---:|---:|
+| **SMALL** | Backpack, laptop bag, small shopping bags | ₹15 | ₹35 | ₹60 | ₹90 |
+| **MEDIUM** | Cabin trolley + backpack | ₹25 | ₹55 | ₹95 | ₹140 |
+| **LARGE** | Large suitcase / multiple bags | ₹40 | ₹85 | ₹150 | ₹220 |
+
+> *Note: This represents indicative passenger-facing pricing; the final commercial tariff may vary based on railway route, coach tier, demand surge, locker availability, or train journey duration.*
+
+### **B. Core Pricing Principles**
+- **Clean Locker Rental Pricing**: No separate fees for IoT hardware, sensors, cloud connectivity, encryption, or security. All telemetry and security features are included by default.
+- **Reference Baseline**: Standard medium locker baseline is **₹25/hour**. LockNLeave lockers start from **₹15/hour** (for small lockers).
+- **Train Journey Packages**:
+  - Up to 3 Hours: from ₹35
+  - Up to 6 Hours: from ₹60
+  - Up to 12 Hours: from ₹90
+
+### **C. Locker Extension Options**
+Passengers with active journeys can extend their reservation on demand directly from the session interface without re-authenticating:
+
+| Extension Tier | SMALL | MEDIUM | LARGE |
+|---|---:|---:|---:|
+| **+30 min** | ₹10 | ₹15 | ₹20 |
+| **+1 hour** | ₹15 | ₹25 | ₹40 |
+| **+3 hours** | ₹35 | ₹55 | ₹85 |
+
+### **D. UI Representation & Billing Flow**
+- **Headline**: `"LockNLeave lockers start from ₹15/hour"`
+- **Transparent Breakdown Flow**: `Locker Rental → Extension → Final Amount`
+- **Active Session Extension Selector**: Transparent choice between `+30 min | +1 hour | +3 hours`
+- **Early Termination & Loyalty Credits**: Retained at **10 credits = ₹1.00**, rewarding passengers who vacate their locker early with instant credit balances for future trips.
+
+---
+
 > [!NOTE]
 > This ecosystem represents a complete integration of hardware engineering, cloud scalability, and business-focused analytics.
+

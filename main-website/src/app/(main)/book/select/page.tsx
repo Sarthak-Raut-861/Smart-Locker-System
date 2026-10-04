@@ -33,13 +33,18 @@ const LockerCard = ({ locker, onSelect }: { locker: Locker, onSelect: (l: Locker
         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-outfit text-xl font-black text-white italic">
           {locker.id}
         </div>
-        <div className={`px-2.5 py-1 rounded-full flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest border ${
-          isAvailable 
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-        }`}>
-          <div className={`w-1 h-1 rounded-full ${isAvailable ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-          {isAvailable ? 'Available' : 'Occupied'}
+        <div className="flex flex-col items-end gap-1.5">
+          <div className={`px-2.5 py-1 rounded-full flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest border ${
+            isAvailable 
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+          }`}>
+            <div className={`w-1 h-1 rounded-full ${isAvailable ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+            {isAvailable ? 'Available' : 'Occupied'}
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/5 text-gray-400 border border-white/5">
+            {locker.size || 'Medium'}
+          </span>
         </div>
       </div>
 
@@ -100,15 +105,17 @@ export default function SelectLockerPage() {
             <h1 className="text-3xl font-black text-white font-outfit uppercase italic tracking-tighter leading-none mb-1">
               Select Your <span className="text-primary italic">Locker</span>
             </h1>
-            <div className="flex items-center gap-4 mt-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            <div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
               <span className="flex items-center gap-1.5 opacity-80">
-                <span className="flex items-center gap-1.5 opacity-80">
-                  <Train className="w-3 h-3 text-primary" /> Pune Junction
-                </span>
-                <span className="w-1 h-1 rounded-full bg-white/10" />
-                <span className="flex items-center gap-1.5 opacity-80">
-                  <MapPin className="w-3 h-3 text-primary" /> Coach S3
-                </span>
+                <Train className="w-3 h-3 text-primary" /> Pune Junction
+              </span>
+              <span className="w-1 h-1 rounded-full bg-white/10" />
+              <span className="flex items-center gap-1.5 opacity-80">
+                <MapPin className="w-3 h-3 text-primary" /> Coach S3
+              </span>
+              <span className="w-1 h-1 rounded-full bg-white/10" />
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-black">
+                Starting from ₹15/hour
               </span>
             </div>
           </div>

@@ -22,13 +22,25 @@ interface LockerStore {
 }
 
 export const useLockerStore = create<LockerStore>((set, get) => ({
-  lockers: Array.from({ length: 20 }, (_, i) => ({
-    id: String(i + 1),
-    firestoreId: `locker_${i + 1}`,
-    status: 'AVAILABLE',
-    size: 'Standard',
-    price: 70
-  })),
+  lockers: Array.from({ length: 20 }, (_, i) => {
+    const id = i + 1;
+    let size = 'Medium';
+    let price = 25;
+    if (id <= 6) {
+      size = 'Small';
+      price = 15;
+    } else if (id > 16) {
+      size = 'Large';
+      price = 40;
+    }
+    return {
+      id: String(id),
+      firestoreId: `locker_${id}`,
+      status: 'AVAILABLE' as const,
+      size,
+      price
+    };
+  }),
   loading: true,
 
   initLockers: () => {
@@ -36,10 +48,14 @@ export const useLockerStore = create<LockerStore>((set, get) => ({
     return onSnapshot(collection(db, "lockers"), (snapshot) => {
       const now = Date.now();
       const updatedStatuses: Record<string, 'ACTIVE' | 'AVAILABLE'> = {};
+      const metaOverrides: Record<string, { size?: string; price?: number }> = {};
 
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
         const id = docSnap.id.replace('locker_', '');
+        if (data.size || data.price) {
+          metaOverrides[id] = { size: data.size, price: data.price };
+        }
         
         if (data.status === 'ACTIVE') {
           let sessionEnd = data.sessionEnd;
@@ -64,6 +80,8 @@ export const useLockerStore = create<LockerStore>((set, get) => ({
       set(state => ({
         lockers: state.lockers.map(l => ({
           ...l,
+          size: metaOverrides[l.id]?.size || l.size,
+          price: metaOverrides[l.id]?.price || l.price,
           status: updatedStatuses[l.id] || 'AVAILABLE'
         })),
         loading: false

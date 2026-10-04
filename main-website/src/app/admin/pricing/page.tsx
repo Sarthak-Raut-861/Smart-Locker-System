@@ -91,41 +91,71 @@ export default function PricingPage() {
         </div>
 
         <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col">
-           <h2 className="text-xl font-bold text-white mb-4">Base Pricing Matrix</h2>
+           <h2 className="text-xl font-bold text-white mb-1">Coach Passenger Pricing Matrix</h2>
+           <p className="text-xs text-muted-foreground mb-4">Indicative passenger-facing tariffs for railway coach installations.</p>
            
            <div className="flex-1 overflow-x-auto">
-             <table className="w-full text-left text-sm text-gray-300">
-               <thead className="text-xs uppercase text-muted-foreground border-b border-white/10">
+             <table className="w-full text-left text-xs text-gray-300">
+               <thead className="uppercase text-muted-foreground border-b border-white/10 font-bold">
                  <tr>
-                   <th className="py-3">Duration</th>
-                   <th className="py-3">Base Price</th>
-                   <th className="py-3 text-right">Status</th>
+                   <th className="py-2.5">Tier / Size</th>
+                   <th className="py-2.5 text-center">1 Hr</th>
+                   <th className="py-2.5 text-center">3 Hrs</th>
+                   <th className="py-2.5 text-center">6 Hrs</th>
+                   <th className="py-2.5 text-center">12 Hrs</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-white/5">
                  <tr>
-                   <td className="py-4 font-semibold text-white">30 Min</td>
-                   <td className="py-4">₹20</td>
-                   <td className="py-4 text-right">
-                     <span className="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs">Active</span>
+                   <td className="py-3 font-semibold text-white">
+                     <div>SMALL</div>
+                     <div className="text-[10px] text-gray-500 font-normal">Backpack, laptop</div>
                    </td>
+                   <td className="py-3 text-center text-primary font-bold">₹15</td>
+                   <td className="py-3 text-center">₹35</td>
+                   <td className="py-3 text-center">₹60</td>
+                   <td className="py-3 text-center">₹90</td>
                  </tr>
                  <tr>
-                   <td className="py-4 font-semibold text-white">1 Hour</td>
-                   <td className="py-4">₹70</td>
-                   <td className="py-4 text-right">
-                     <span className="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs">Active</span>
+                   <td className="py-3 font-semibold text-white">
+                     <div>MEDIUM <span className="text-[9px] text-emerald-400 bg-emerald-400/10 px-1 rounded">Base</span></div>
+                     <div className="text-[10px] text-gray-500 font-normal">Cabin trolley + bag</div>
                    </td>
+                   <td className="py-3 text-center text-primary font-bold">₹25</td>
+                   <td className="py-3 text-center">₹55</td>
+                   <td className="py-3 text-center">₹95</td>
+                   <td className="py-3 text-center">₹140</td>
                  </tr>
                  <tr>
-                   <td className="py-4 font-semibold text-white">3 Hours</td>
-                   <td className="py-4">₹180</td>
-                   <td className="py-4 text-right">
-                     <span className="text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded text-xs">Active</span>
+                   <td className="py-3 font-semibold text-white">
+                     <div>LARGE</div>
+                     <div className="text-[10px] text-gray-500 font-normal">Suitcase / multiple</div>
                    </td>
+                   <td className="py-3 text-center text-primary font-bold">₹40</td>
+                   <td className="py-3 text-center">₹85</td>
+                   <td className="py-3 text-center">₹150</td>
+                   <td className="py-3 text-center">₹220</td>
                  </tr>
                </tbody>
              </table>
+
+             <div className="mt-4 pt-3 border-t border-white/5">
+               <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Extension Add-on Rates</div>
+               <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                 <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                   <div className="text-gray-400 font-bold mb-0.5">+30 Min</div>
+                   <div className="text-white font-mono">₹10 / ₹15 / ₹20</div>
+                 </div>
+                 <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                   <div className="text-gray-400 font-bold mb-0.5">+1 Hour</div>
+                   <div className="text-white font-mono">₹15 / ₹25 / ₹40</div>
+                 </div>
+                 <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                   <div className="text-gray-400 font-bold mb-0.5">+3 Hours</div>
+                   <div className="text-white font-mono">₹35 / ₹55 / ₹85</div>
+                 </div>
+               </div>
+             </div>
            </div>
 
            <button className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-colors flex justify-center items-center gap-2 border border-white/10">

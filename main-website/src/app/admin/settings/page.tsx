@@ -22,7 +22,7 @@ const DEFAULTS: SettingsState = {
   vibrationSensitivity: 3,
   systemName: "LocknLeave",
   supportEmail: "support@locknleave.io",
-  baseHourlyRate: 70,
+  baseHourlyRate: 25,
 };
 
 function Section({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
