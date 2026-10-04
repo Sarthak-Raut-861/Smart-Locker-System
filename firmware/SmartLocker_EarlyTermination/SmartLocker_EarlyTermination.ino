@@ -208,7 +208,7 @@ int buzzerLevel = 0; // 0 = no alert, 1 = 10s, 2 = 15s, 3 = 20s
 float emptyDistance = 0.0;
 bool itemPresent = false;
 unsigned long lastUltrasonicUpdate = 0;
-const unsigned long ULTRASONIC_INTERVAL = 1000; // Increased frequency to 1s for better responsiveness
+const unsigned long ULTRASONIC_INTERVAL = 200; // 200ms fast sampling (5 Hz)
 int detectionCount = 0; // Debounce counter
 
 enum DisplayMode { DISP_QR, DISP_INFO };
@@ -270,14 +270,23 @@ bool getTouch(int &x, int &y) {
   // Safety net: reject ADC max noise
   if (ry > 2000 || rx < 50) return false;
 
-  // Perfectly calibrated mapping from exact center touches
-  x = map(rx, 45, 1929, 0, 240);
-  y = map(ry, 228, 1910, 0, 320);
+  // Compensate for resistive touch panel tilt / cross-coupling:
+  // When Y is near the top (Row 0, ry ~800), rx reads ~180 counts higher than at the bottom (Row 3, ry ~1700).
+  int rx_comp = (int)rx;
+  if (ry < 1800) {
+    rx_comp -= (int)((1800 - ry) * 0.18f);
+  }
+  if (rx_comp < 50) rx_comp = 50;
+
+  // Calibrated mapping: 
+  // Physical X range for 240px width spans ~780 (left) to ~2100 (right)
+  x = map(rx_comp, 780, 2100, 0, 240);
+  y = map(ry, 240, 1900, 0, 320);
 
   x = constrain(x, 0, 239);
   y = constrain(y, 0, 319);
 
-  Serial.printf("[TOUCH] Z=%d RAW(%d,%d) -> MAP(%d,%d)\n", z1, rx, ry, x, y);
+  Serial.printf("[TOUCH] Z=%d RAW(%d,%d) COMP_X=%d -> MAP(%d,%d)\n", z1, rx, ry, rx_comp, x, y);
   return true;
 }
 
@@ -524,20 +533,35 @@ void handleTouch() {
     return;
   }
 
-  int pad = 3;
-  for (int i = 0; i < 12; i++) {
-    if (tx >= (buttons[i].x - pad) && tx <= (buttons[i].x + buttons[i].w + pad) &&
-        ty >= (buttons[i].y - pad) && ty <= (buttons[i].y + buttons[i].h + pad)) {
-      
-      if (!buttons[i].isPressed) {
-        buttons[i].isPressed = true;
-        drawButton(i);
-        processKeypadEntry(buttons[i].label);
-        delay(50);
-        buttons[i].isPressed = false;
-        drawButton(i);
-        return;
-      }
+  // Grid partitioning for 3 columns x 4 rows to prevent accidental column mis-clicks
+  // Col 0: x < 98 (centers on 48..58: '1', '4', '7', '<')
+  // Col 1: 98 <= x < 156 (centers on 120: '2', '5', '8', '0')
+  // Col 2: x >= 156 (centers on 192: '3', '6', '9', '#')
+  int col = -1;
+  if (tx < 98) col = 0;
+  else if (tx < 156) col = 1;
+  else col = 2;
+
+  // Row 0: 90 <= y < 150 ('1', '2', '3')
+  // Row 1: 150 <= y < 198 ('4', '5', '6')
+  // Row 2: 198 <= y < 246 ('7', '8', '9')
+  // Row 3: 246 <= y <= 315 ('<', '0', '#')
+  int row = -1;
+  if (ty >= 90 && ty < 150) row = 0;
+  else if (ty >= 150 && ty < 198) row = 1;
+  else if (ty >= 198 && ty < 246) row = 2;
+  else if (ty >= 246 && ty <= 315) row = 3;
+
+  if (row >= 0 && col >= 0) {
+    int i = row * 3 + col;
+    if (!buttons[i].isPressed) {
+      buttons[i].isPressed = true;
+      drawButton(i);
+      processKeypadEntry(buttons[i].label);
+      delay(50);
+      buttons[i].isPressed = false;
+      drawButton(i);
+      return;
     }
   }
 }
@@ -1193,122 +1217,101 @@ void calibrateUltrasonic() {
   int validReadings = 0;
   for(int i = 0; i < 10; i++) {
     digitalWrite(TRIG_PIN, LOW);
-    delayMicroseconds(2);
+    delayMicroseconds(4);
     digitalWrite(TRIG_PIN, HIGH);
     delayMicroseconds(10);
     digitalWrite(TRIG_PIN, LOW);
-    long duration = pulseIn(ECHO_PIN, HIGH, 30000);
+    long duration = pulseIn(ECHO_PIN, HIGH, 25000);
     if(duration > 0) {
-      sum += duration;
-      validReadings++;
+      float d = duration * 0.034 / 2.0;
+      if (d >= 2.0 && d <= 150.0) {
+        sum += duration;
+        validReadings++;
+      }
     }
-    delay(50);
+    delay(30);
   }
   if (validReadings > 0) {
     emptyDistance = (sum / validReadings) * 0.034 / 2.0;
   } else {
-    emptyDistance = 15.0; // safe fallback default cm
+    emptyDistance = 35.0; // Safe default empty locker depth (cm)
   }
 
-  // If emptyDistance is too large (e.g. door was open during boot),
-  // cap it to a realistic closed-empty distance so self-healing can adjust it upwards when closed.
-  if (emptyDistance > 22.0) {
-    Serial.println("[ULTRASONIC] Calibrated distance too large (door open?). Capping to default 15.0 cm for closed auto-healing.");
-    emptyDistance = 15.0;
+  // Realistic boundary check: lockers are typically 15cm to 80cm deep
+  if (emptyDistance < 10.0 || emptyDistance > 120.0) {
+    Serial.printf("[ULTRASONIC] Reading %.1f cm outside normal range, defaulting to 35.0 cm\n", emptyDistance);
+    emptyDistance = 35.0;
   }
 
-  Serial.print("[ULTRASONIC] Empty distance set to: ");
-  Serial.print(emptyDistance);
-  Serial.println(" cm");
+  Serial.printf("[ULTRASONIC] Empty distance set to: %.1f cm\n", emptyDistance);
 }
 
 void updateUltrasonic() {
-  if (millis() - lastUltrasonicUpdate >= ULTRASONIC_INTERVAL) {
-    lastUltrasonicUpdate = millis();
-    
-    // The sensor readings are meaningless if the door is open (it will read the room/user)
-    if (doorCurrentlyOpen) {
-      detectionCount = 0; // Reset debounce so it starts fresh when closed
-      return; 
-    }
-    
-    digitalWrite(TRIG_PIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIG_PIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_PIN, LOW);
-    long duration = pulseIn(ECHO_PIN, HIGH, 30000);
-    
-    if (duration > 0) {
-      float distance = duration * 0.034 / 2.0;
-      
-      // Ignore impossible readings (multipath noise inside a box)
-      // Assuming the locker is definitely less than 150cm deep
-      if (distance > 150.0) {
-        Serial.printf("[ULTRASONIC] Ignored noisy reading: %.1f cm\n", distance);
-        return; // Skip this reading
-      }
-      
-      // Auto-calibration: If locker is empty/available and the door is closed,
-      // we update emptyDistance to the current distance reading.
-      if (currentBackendStatus == "AVAILABLE") {
-        emptyDistance = (emptyDistance * 0.9) + (distance * 0.1);
-      }
+  if (millis() - lastUltrasonicUpdate < ULTRASONIC_INTERVAL) return;
+  lastUltrasonicUpdate = millis();
 
-      // Self-healing calibration: If we consistently read a distance LARGER than emptyDistance,
-      // it means we booted up with an item inside. Let's fix the baseline.
-      static int healingCount = 0;
-      if (distance > emptyDistance + 2.0) {
-        healingCount++;
-        if (healingCount > 5) { // 5 seconds of larger distance
-          emptyDistance = distance;
-          healingCount = 0;
-          Serial.printf("[ULTRASONIC] Self-healed empty distance to: %.1f cm\n", emptyDistance);
-        }
-      } else {
-         healingCount = 0;
-      }
-      
-      // Threshold lowered to 3.0 cm for thinner items (books, laptops, etc.)
-      bool isPresent = (distance < emptyDistance - 3.0 && distance > 1.0);
-      
-      // If the locker is AVAILABLE (not booked), it cannot contain a valid user item.
-      if (currentBackendStatus == "AVAILABLE") {
-        isPresent = false;
-      }
-      
-      Serial.printf("[ULTRASONIC] Dist: %.1f cm | Base: %.1f cm | Present: %s\n", distance, emptyDistance, isPresent ? "YES" : "NO");
-      
-      // Asymmetric Debounce logic: 
-      // It's easy to accidentally miss the object due to bad angles. 
-      // We require 2 reads to detect, but 5 reads (5 seconds) to declare it empty.
-      if (isPresent != itemPresent) {
-        detectionCount++;
-        int threshold = itemPresent ? 5 : 2; 
-        
-        if (detectionCount >= threshold) {
-          itemPresent = isPresent;
-          detectionCount = 0;
-          Serial.print("[ULTRASONIC] State officially changed to: ");
-          Serial.println(itemPresent ? "PRESENT" : "EMPTY");
-          
-          if (WiFi.status() == WL_CONNECTED) {
-            HTTPClient http;
-            http.setReuse(false);
-            String url = "https://" + String(FIREBASE_HOST) + "/" + String(LOCKER_ID) + ".json?auth=" + String(FIREBASE_SECRET);
-            String json = "{\"itemPresent\":" + String(itemPresent ? "true" : "false") + "}";
-            http.begin(wifiClient, url);
-            http.addHeader("Content-Type", "application/json");
-            int httpCode = http.sendRequest("PATCH", json);
-            Serial.printf("[ULTRASONIC] Firebase Sync Code: %d\n", httpCode);
-            http.end();
-          }
-        }
-      } else {
-        detectionCount = 0; // Reset if it fluctuates back
-      }
-    } else {
-      Serial.println("[ULTRASONIC] Timeout / Out of range");
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(4);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  long duration = pulseIn(ECHO_PIN, HIGH, 25000); // 25ms timeout (~4.2m)
+  if (duration <= 0) {
+    // Single glitch/timeout — skip this cycle without resetting detection
+    return;
+  }
+
+  float distance = duration * 0.034 / 2.0;
+  if (distance < 1.5 || distance > 150.0) {
+    return; // Noise spike filter
+  }
+
+  // Self-healing: If we consistently read a distance larger than emptyDistance,
+  // the locker is emptier than calibrated (e.g., booted with an item inside).
+  static int healingCount = 0;
+  if (distance > emptyDistance + 2.5 && distance <= 100.0) {
+    healingCount++;
+    if (healingCount >= 5) {
+      emptyDistance = distance;
+      healingCount = 0;
+      Serial.printf("[ULTRASONIC] Baseline auto-healed to: %.1f cm\n", emptyDistance);
+    }
+  } else {
+    healingCount = 0;
+  }
+
+  // Item detected if measured distance is closer than the empty locker back wall/floor
+  bool isPresent = (distance <= (emptyDistance - 3.0) && distance >= 2.0);
+
+  // Fast 3-sample debounce (3 * 200ms = 600ms responsive state change)
+  static bool lastCandidate = false;
+  static int stableCount = 0;
+
+  if (isPresent == lastCandidate) {
+    stableCount++;
+  } else {
+    lastCandidate = isPresent;
+    stableCount = 1;
+  }
+
+  if (stableCount >= 3 && itemPresent != isPresent) {
+    itemPresent = isPresent;
+    stableCount = 0;
+    Serial.printf("[ULTRASONIC] State changed -> %s (Dist: %.1f cm | Empty Base: %.1f cm)\n", 
+                  itemPresent ? "ITEM DETECTED" : "BOX EMPTY", distance, emptyDistance);
+
+    // Fast sync to Firebase Realtime Database
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      http.setReuse(true);
+      String url = "https://" + String(FIREBASE_HOST) + "/" + String(LOCKER_ID) + ".json?auth=" + String(FIREBASE_SECRET);
+      http.begin(wifiClient, url);
+      http.addHeader("Content-Type", "application/json");
+      String json = "{\"itemPresent\":" + String(itemPresent ? "true" : "false") + "}";
+      int httpCode = http.sendRequest("PATCH", json);
+      Serial.printf("[ULTRASONIC] Firebase Sync Code: %d\n", httpCode);
+      http.end();
     }
   }
 }
