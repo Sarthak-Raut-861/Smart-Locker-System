@@ -3,7 +3,7 @@
 import { useAdminStore } from "@/store/useAdminStore";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RevenueLineChart, BookingBarChart, UsageDonutChart } from "@/components/charts/Charts";
-import { Server, Users, DollarSign, Clock, TrendingUp, Activity, Calendar, Star, Zap, ShieldCheck, AlertCircle, Lock } from "lucide-react";
+import { Server, Users, IndianRupee, Clock, TrendingUp, Activity, Calendar, Star, Zap, ShieldCheck, AlertCircle, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useEffect, useState } from "react";
 
@@ -140,7 +140,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             <StatCard label="Live Fleet Available"  value={availableLockers}        icon={Server}    color="emerald" loading={isInitializing} delay={0.0} />
             <StatCard label="Active Engagements"     value={activeLockers}           icon={Users}     color="blue"    loading={isInitializing} delay={0.1} />
-            <StatCard label="Net System Revenue"      value={formatRevenue(totalRevenue)} icon={DollarSign} color="amber" loading={isInitializing} delay={0.2} />
+            <StatCard label="Net System Revenue"      value={formatRevenue(totalRevenue)} icon={IndianRupee} color="amber" loading={isInitializing} delay={0.2} />
             <StatCard label="Maintenance Offline"     value={maintenanceLockers}      icon={Activity}  color="rose"    loading={isInitializing} delay={0.3} />
           </div>
 

@@ -126,23 +126,22 @@ Verify that Firebase RTDB's event loop and the application's synchronization han
 
 LockNLeave is engineered primarily for **smart luggage lockers installed inside railway train coaches**. The commercial pricing structure is designed to deliver complete transparency, high passenger convenience, and zero hidden overheads.
 
-### **A. Indicative Passenger-Facing Tariff Matrix**
+### **A. Indicative Passenger-Facing Tariff Matrix (Min 1 Hour, Max 48 Hours)**
 
-| Locker Size | Typical Use | 1 Hour | 3 Hours | 6 Hours | 12 Hours |
-|---|---|---:|---:|---:|---:|
-| **SMALL** | Backpack, laptop bag, small shopping bags | ₹15 | ₹35 | ₹60 | ₹90 |
-| **MEDIUM** | Cabin trolley + backpack | ₹25 | ₹55 | ₹95 | ₹140 |
-| **LARGE** | Large suitcase / multiple bags | ₹40 | ₹85 | ₹150 | ₹220 |
+| Locker Size | Typical Use | 1 Hour *(Min)* | 3 Hours | 6 Hours | 12 Hours | 24 Hours *(1 Day)* | 48 Hours *(2 Days / Max)* |
+|---|---|---:|---:|---:|---:|---:|---:|
+| **SMALL** | Backpack, laptop bag, small shopping bags | ₹15 | ₹35 | ₹60 | ₹90 | ₹150 | ₹260 |
+| **MEDIUM** | Cabin trolley + backpack *(Baseline)* | ₹25 | ₹55 | ₹95 | ₹140 | ₹240 | ₹420 |
+| **LARGE** | Large suitcase / multiple bags | ₹40 | ₹85 | ₹150 | ₹220 | ₹380 | ₹680 |
 
 > *Note: This represents indicative passenger-facing pricing; the final commercial tariff may vary based on railway route, coach tier, demand surge, locker availability, or train journey duration.*
 
-### **B. Core Pricing Principles**
+### **B. Core Pricing Principles & Algorithm**
+- **Duration Boundary**: Strict minimum of **1 Hour** (initial booking) and maximum of **48 Hours** (long-distance rail journeys).
 - **Clean Locker Rental Pricing**: No separate fees for IoT hardware, sensors, cloud connectivity, encryption, or security. All telemetry and security features are included by default.
 - **Reference Baseline**: Standard medium locker baseline is **₹25/hour**. LockNLeave lockers start from **₹15/hour** (for small lockers).
-- **Train Journey Packages**:
-  - Up to 3 Hours: from ₹35
-  - Up to 6 Hours: from ₹60
-  - Up to 12 Hours: from ₹90
+- **Train Journey Packages**: Instant selection for `1h`, `3h`, `6h`, `12h`, `24h`, and `48h`.
+- **Progressive Bracket-Marginal Algorithm**: For custom durations ($1 \le h \le 48$), the system charges the base price of the preceding milestone plus a decreasing marginal hourly rate, guaranteeing that longer storage periods always benefit from progressive volume discounts with zero price anomalies.
 
 ### **C. Locker Extension Options**
 Passengers with active journeys can extend their reservation on demand directly from the session interface without re-authenticating:

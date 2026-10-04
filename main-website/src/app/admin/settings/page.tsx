@@ -16,8 +16,8 @@ interface SettingsState {
 }
 
 const DEFAULTS: SettingsState = {
-  minDuration: 0.5,
-  maxDuration: 24,
+  minDuration: 1,
+  maxDuration: 48,
   autoLockDelay: 5,
   vibrationSensitivity: 3,
   systemName: "LocknLeave",

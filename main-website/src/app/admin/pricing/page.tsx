@@ -92,7 +92,7 @@ export default function PricingPage() {
 
         <div className="glass-panel p-6 rounded-2xl border border-white/5 flex flex-col">
            <h2 className="text-xl font-bold text-white mb-1">Coach Passenger Pricing Matrix</h2>
-           <p className="text-xs text-muted-foreground mb-4">Indicative passenger-facing tariffs for railway coach installations.</p>
+           <p className="text-xs text-muted-foreground mb-4">Indicative passenger-facing tariffs (Min 1 hr, Max 48 hrs) for railway coach installations.</p>
            
            <div className="flex-1 overflow-x-auto">
              <table className="w-full text-left text-xs text-gray-300">
@@ -103,6 +103,8 @@ export default function PricingPage() {
                    <th className="py-2.5 text-center">3 Hrs</th>
                    <th className="py-2.5 text-center">6 Hrs</th>
                    <th className="py-2.5 text-center">12 Hrs</th>
+                   <th className="py-2.5 text-center">24 Hrs (1D)</th>
+                   <th className="py-2.5 text-center">48 Hrs (2D)</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-white/5">
@@ -115,6 +117,8 @@ export default function PricingPage() {
                    <td className="py-3 text-center">₹35</td>
                    <td className="py-3 text-center">₹60</td>
                    <td className="py-3 text-center">₹90</td>
+                   <td className="py-3 text-center">₹150</td>
+                   <td className="py-3 text-center">₹260</td>
                  </tr>
                  <tr>
                    <td className="py-3 font-semibold text-white">
@@ -125,6 +129,8 @@ export default function PricingPage() {
                    <td className="py-3 text-center">₹55</td>
                    <td className="py-3 text-center">₹95</td>
                    <td className="py-3 text-center">₹140</td>
+                   <td className="py-3 text-center">₹240</td>
+                   <td className="py-3 text-center">₹420</td>
                  </tr>
                  <tr>
                    <td className="py-3 font-semibold text-white">
@@ -135,6 +141,8 @@ export default function PricingPage() {
                    <td className="py-3 text-center">₹85</td>
                    <td className="py-3 text-center">₹150</td>
                    <td className="py-3 text-center">₹220</td>
+                   <td className="py-3 text-center">₹380</td>
+                   <td className="py-3 text-center">₹680</td>
                  </tr>
                </tbody>
              </table>

@@ -25,21 +25,42 @@ import { encryptData, hashPIN } from '@/lib/crypto';
 import { syncHardwareAction } from '@/app/actions/syncHardware';
 
 
-// Passenger Pricing Engine: Indicative railway coach locker pricing
+// Passenger Pricing Engine: Indicative railway coach locker pricing (Min 1 hr, Max 48 hrs)
 const getJourneyPackagePrice = (size: string = 'Medium', duration: number): number => {
   const norm = (size || 'Medium').toUpperCase();
-  const matrix: Record<string, Record<number, number>> = {
-    SMALL: { 0.5: 10, 1: 15, 3: 35, 6: 60, 12: 90 },
-    MEDIUM: { 0.5: 15, 1: 25, 3: 55, 6: 95, 12: 140 },
-    LARGE: { 0.5: 20, 1: 40, 3: 85, 6: 150, 12: 220 }
+  // Milestone Packages (1h, 3h, 6h, 12h, 24h, 48h)
+  const milestones: Record<string, Record<number, number>> = {
+    SMALL:  { 1: 15, 3: 35, 6: 60, 12: 90,  24: 150, 48: 260 },
+    MEDIUM: { 1: 25, 3: 55, 6: 95, 12: 140, 24: 240, 48: 420 },
+    LARGE:  { 1: 40, 3: 85, 6: 150, 12: 220, 24: 380, 48: 680 }
   };
-  const tier = matrix[norm] || matrix.MEDIUM;
-  if (tier[duration] !== undefined) {
-    return tier[duration];
+  const tier = milestones[norm] || milestones.MEDIUM;
+  
+  // Clamp duration between min 1 hour and max 48 hours
+  const d = Math.min(48, Math.max(1, duration));
+  
+  // Exact milestone match
+  if (tier[d] !== undefined) {
+    return tier[d];
   }
-  // Linear calculation for custom precision inputs based on 1h rate
-  const hourlyRate = tier[1] || 25;
-  return Math.round(hourlyRate * duration);
+  
+  // Progressive Bracketed Marginal Algorithm for custom/precision hours
+  if (d < 3) {
+    const marginal = (tier[3] - tier[1]) / 2; // 1h -> 3h
+    return Math.round(tier[1] + (d - 1) * marginal);
+  } else if (d < 6) {
+    const marginal = (tier[6] - tier[3]) / 3; // 3h -> 6h
+    return Math.round(tier[3] + (d - 3) * marginal);
+  } else if (d < 12) {
+    const marginal = (tier[12] - tier[6]) / 6; // 6h -> 12h
+    return Math.round(tier[6] + (d - 6) * marginal);
+  } else if (d < 24) {
+    const marginal = (tier[24] - tier[12]) / 12; // 12h -> 24h
+    return Math.round(tier[12] + (d - 12) * marginal);
+  } else {
+    const marginal = (tier[48] - tier[24]) / 24; // 24h -> 48h
+    return Math.round(tier[24] + (d - 24) * marginal);
+  }
 };
 
 // Inner component that uses useSearchParams (must be inside Suspense)
@@ -414,12 +435,12 @@ function BookingConfirmInner() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" /> Journey Duration Package
               </h3>
-              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Starting from ₹15/hour • Clean coach luggage storage</p>
+              <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Starting from ₹15/hour • Min 1 hr, Max 48 hrs</p>
             </div>
             <span className="text-primary font-bold text-xs">{duration} {duration === 1 ? 'Hour' : 'Hours'}</span>
           </div>
-          <div className="grid grid-cols-5 gap-2 mb-6">
-            {[0.5, 1, 3, 6, 12].map((h) => {
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
+            {[1, 3, 6, 12, 24, 48].map((h) => {
               const packagePrice = getJourneyPackagePrice(selectedLocker?.size, h);
               return (
                 <button
@@ -431,7 +452,7 @@ function BookingConfirmInner() {
                     : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'
                   }`}
                 >
-                  <div className="text-xs font-black uppercase tracking-widest">{h === 0.5 ? '30m' : `${h}h`}</div>
+                  <div className="text-xs font-black uppercase tracking-widest">{h >= 24 ? `${h}h (${h/24}D)` : `${h}h`}</div>
                   <div className={`text-[9px] font-bold mt-0.5 ${duration === h ? 'text-white/80' : 'text-gray-500'}`}>
                     ₹{packagePrice}
                   </div>
@@ -440,11 +461,19 @@ function BookingConfirmInner() {
             })}
           </div>
           <div className="bg-white/2 rounded-xl p-3 flex items-center justify-between border border-white/5">
-            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest ml-1">Precision Adjust (hr)</span>
+            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest ml-1">Precision Adjust (1 – 48 hrs)</span>
             <input 
               type="number" 
+              min={1}
+              max={48}
+              step={1}
               value={duration}
-              onChange={(e) => setDuration(Math.max(0.1, Number(e.target.value)))}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (!isNaN(val)) {
+                  setDuration(Math.min(48, Math.max(1, Math.round(val))));
+                }
+              }}
               className="w-16 bg-black/40 border border-white/10 rounded-lg py-1.5 text-center text-white font-black text-sm outline-hidden focus:border-primary/50 transition-colors"
             />
           </div>
