@@ -26,7 +26,10 @@ export const useLockerStore = create<LockerStore>((set, get) => ({
     const id = i + 1;
     let size = 'Medium';
     let price = 25;
-    if (id <= 6) {
+    if (id === 4) {
+      size = 'Medium';
+      price = 25;
+    } else if (id <= 6) {
       size = 'Small';
       price = 15;
     } else if (id > 16) {

@@ -72,12 +72,14 @@ function BookingConfirmInner() {
       const qrId = searchParams.get('id');
       if (qrId) {
         const numId = Number(qrId);
+        const isMed = numId === 4 || (numId > 6 && numId <= 16);
+        const isLarge = numId > 16;
         const lockerFromQR = {
           id: qrId,
           firestoreId: `locker_${qrId}`,
           status: 'AVAILABLE',
-          price: numId <= 6 ? 15 : numId > 16 ? 40 : 25,
-          size: numId <= 6 ? 'Small' : numId > 16 ? 'Large' : 'Medium'
+          price: isLarge ? 40 : isMed ? 25 : 15,
+          size: isLarge ? 'Large' : isMed ? 'Medium' : 'Small'
         };
         setSelectedLocker(lockerFromQR);
         sessionStorage.setItem("selectedLocker", JSON.stringify(lockerFromQR));

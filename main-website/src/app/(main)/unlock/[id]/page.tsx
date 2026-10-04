@@ -546,7 +546,8 @@ export default function UnlockPage() {
                   { h: 3, label: '+3 Hours', badge: 'Journey Extension' },
                 ].map(({ h, label, badge }) => {
                   const numLocker = Number(lockerId);
-                  const currentSize = lockerData?.size || (numLocker <= 6 ? 'Small' : numLocker > 16 ? 'Large' : 'Medium');
+                  const isMed = numLocker === 4 || (numLocker > 6 && numLocker <= 16);
+                  const currentSize = lockerData?.size || (numLocker > 16 ? 'Large' : isMed ? 'Medium' : 'Small');
                   const cost = getExtensionPrice(currentSize, h);
                   return (
                     <button
