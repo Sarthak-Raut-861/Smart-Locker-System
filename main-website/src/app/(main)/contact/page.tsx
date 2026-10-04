@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Clock, Send, CheckCircle, MessageSquare, Loader2 } from 'lucide-react';
 
@@ -67,9 +68,9 @@ export default function ContactPage() {
             <p className="text-gray-400 leading-relaxed font-medium mb-8">
               Check out our Help Center for instant answers to frequently asked questions about booking, payments, and locker security.
             </p>
-            <button className="flex items-center gap-3 text-primary font-black uppercase tracking-widest text-sm hover:gap-5 transition-all">
+            <Link href="/help" className="inline-flex items-center gap-3 text-primary font-black uppercase tracking-widest text-sm hover:gap-5 transition-all">
               Visit Help Center <MessageSquare className="w-5 h-5" />
-            </button>
+            </Link>
           </div>
           
           <div className="flex items-center gap-6 px-10">

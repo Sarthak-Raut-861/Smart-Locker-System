@@ -122,6 +122,13 @@ export default function FAQPage() {
   return (
     <div className="container mx-auto px-6 py-20 max-w-4xl">
       <div className="text-center mb-20">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-widest mb-4"
+        >
+          <HelpCircle className="w-4 h-4" /> Help Center &amp; FAQ
+        </motion.div>
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
