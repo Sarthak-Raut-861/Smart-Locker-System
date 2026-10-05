@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mail, Lock, LogIn, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, Lock, LogIn, ArrowLeft, Loader2, ShieldAlert, KeyRound } from 'lucide-react';
 import { auth } from '@/lib/firebase/config';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
@@ -117,6 +117,23 @@ export default function LoginPage() {
              <p className="text-sm text-slate-400 font-medium">
                Don't have an account? <Link href="/signup" className="text-indigo-400 hover:text-indigo-300 font-bold ml-1">Sign up</Link>
              </p>
+             <div className="pt-2">
+               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 text-left">
+                 <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider mb-1">
+                   <ShieldAlert className="w-4 h-4 shrink-0" />
+                   Lost Your Phone?
+                 </div>
+                 <p className="text-gray-400 text-xs leading-relaxed mb-2.5">
+                   Recover access to your active locker without your phone using your booking details.
+                 </p>
+                 <Link 
+                   href="/recovery" 
+                   className="inline-flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs uppercase tracking-wider transition-all border border-amber-500/30"
+                 >
+                   <KeyRound className="w-3.5 h-3.5" /> Recover My Locker
+                 </Link>
+               </div>
+             </div>
              <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-white transition-colors">
                <ArrowLeft className="w-4 h-4" /> ← Back to Home
              </Link>

@@ -26,6 +26,7 @@ export const Footer: React.FC = () => {
           Secure IoT Storage Infrastructure &bull; &copy; {new Date().getFullYear()} LocknLeave
         </p>
         <div className="flex justify-center flex-wrap gap-6 text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
+           <Link href="/recovery" className="text-amber-400/80 hover:text-amber-300 transition-colors">Emergency Recovery</Link>
            <Link href="/help" className="hover:text-white transition-colors">Help Center</Link>
            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
            <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>

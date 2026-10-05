@@ -23,6 +23,8 @@ import { collection, doc, runTransaction, getDoc } from 'firebase/firestore';
 import { ref, update } from 'firebase/database';
 import { encryptData, hashPIN } from '@/lib/crypto';
 import { syncHardwareAction } from '@/app/actions/syncHardware';
+import { generateEmergencyRecoveryCode, hashEmergencyRecoveryCode } from '@/lib/recovery/recoveryCrypto';
+import { KeyRound, ShieldAlert, Copy, Check } from 'lucide-react';
 
 
 // Passenger Pricing Engine: Indicative railway coach locker pricing (Min 1 hr, Max 48 hrs)
@@ -79,6 +81,8 @@ function BookingConfirmInner() {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [generatedPin, setGeneratedPin] = useState('');
+  const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState('');
+  const [recoveryCodeCopied, setRecoveryCodeCopied] = useState(false);
   const [pricing, setPricing] = useState<any>(null);
   const [leftBehindTime, setLeftBehindTime] = useState<number>(0);
   const [leftBehindPenalty, setLeftBehindPenalty] = useState<number>(0);
@@ -193,6 +197,10 @@ function BookingConfirmInner() {
             doorOpenDuration: 0 // Reset door open duration
           }, { merge: true });
 
+        const recoveryCode = generateEmergencyRecoveryCode();
+        const recoveryCodeHash = hashEmergencyRecoveryCode(recoveryCode);
+        const pnr = `PNR${Math.floor(10000000 + Math.random() * 90000000)}`;
+
         const bookingRef = doc(collection(db, "bookings"), bookingId);
         transaction.set(bookingRef, {
           id: bookingId,
@@ -206,8 +214,16 @@ function BookingConfirmInner() {
           createdAt: Date.now(),
           pin: pinHash,
           encryptedPin: pinEncrypted,
-          paymentId: paymentId || null
+          paymentId: paymentId || null,
+          pnr,
+          trainNumber: '12124',
+          coach: 'S3',
+          seat: '42',
+          recoveryCodeHash,
         });
+
+        // Store generated recovery code in component state for display
+        setGeneratedRecoveryCode(recoveryCode);
 
         if (useCredits && (user?.credits || 0) > 0) {
           const creditsToDeduct = Math.ceil(creditDiscount * 10);
@@ -349,27 +365,64 @@ function BookingConfirmInner() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+      <div className="min-h-screen fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md overflow-y-auto">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="glass-panel p-10 md:p-12 rounded-[2.5rem] max-w-md w-full text-center relative overflow-hidden shadow-2xl"
+          className="glass-panel p-8 md:p-10 rounded-[2.5rem] max-w-lg w-full text-center relative overflow-hidden shadow-2xl my-auto"
         >
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 to-primary" />
-          <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="text-emerald-500 w-10 h-10" />
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 via-primary to-indigo-500" />
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="text-emerald-500 w-8 h-8" />
           </div>
-          <h2 className="text-3xl font-black text-white mb-3 font-outfit uppercase italic leading-none">Locker Reserved!</h2>
-          <p className="text-gray-500 text-sm mb-8 font-medium">Scan the station QR and use this PIN to access your locker.</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 font-outfit uppercase italic leading-none">Locker Reserved!</h2>
+          <p className="text-gray-400 text-xs mb-6 font-medium">Locker #{selectedLocker?.id} is now locked and ready for your luggage.</p>
           
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 relative">
-             <div className="text-gray-600 text-[10px] font-bold uppercase tracking-widest mb-3">Access PIN</div>
-             <div className="text-6xl font-black text-primary tracking-[0.2em] font-outfit">{generatedPin}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {/* Module 1: Access PIN */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 relative text-center">
+               <div className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center gap-1.5">
+                 <LockIcon className="w-3 h-3 text-primary" /> Access PIN
+               </div>
+               <div className="text-4xl font-black text-primary tracking-[0.2em] font-outfit">{generatedPin}</div>
+               <p className="text-[10px] text-gray-500 mt-2">Enter this on the locker touchscreen keypad</p>
+            </div>
+
+            {/* Module 2: Emergency Recovery Code */}
+            <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 relative text-center">
+               <div className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center gap-1.5">
+                 <ShieldAlert className="w-3 h-3 text-indigo-400" /> Recovery Code
+               </div>
+               <div className="text-xl font-mono font-black text-indigo-200 tracking-wider py-1.5">
+                 {generatedRecoveryCode || 'LNL-XXXX-XXXX'}
+               </div>
+               <button 
+                 onClick={() => {
+                   if (generatedRecoveryCode) {
+                     navigator.clipboard.writeText(generatedRecoveryCode);
+                     setRecoveryCodeCopied(true);
+                     setTimeout(() => setRecoveryCodeCopied(false), 2000);
+                   }
+                 }}
+                 className="text-[10px] font-bold text-indigo-300 hover:text-white mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 hover:bg-indigo-500/30 transition-colors"
+               >
+                 {recoveryCodeCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                 {recoveryCodeCopied ? 'Copied to Clipboard' : 'Copy Code'}
+               </button>
+            </div>
+          </div>
+
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 mb-6 text-left flex items-start gap-3">
+             <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+             <div className="text-[11px] text-amber-200/90 leading-relaxed">
+               <strong className="text-amber-400 font-bold block mb-0.5">Emergency Locker Access Notice</strong>
+               Write down or store your <strong>Recovery Code</strong> separately from your phone. If you lose your phone during travel, you will need this code at <strong>/recovery</strong> to generate a temporary PIN.
+             </div>
           </div>
 
           <button 
             onClick={() => router.push('/dashboard')}
-            className="bg-primary hover:bg-primary/90 text-white w-full py-4 rounded-xl text-base font-bold uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
+            className="bg-primary hover:bg-primary/90 text-white w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
           >
             Go to Dashboard
           </button>

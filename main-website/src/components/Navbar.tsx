@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Lock, Coins, LogOut, ArrowLeft, User } from 'lucide-react';
+import { Menu, X, Lock, Coins, LogOut, ArrowLeft, User, KeyRound } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { auth } from '@/lib/firebase/config';
 
@@ -108,6 +108,9 @@ export const Navbar: React.FC = () => {
             </>
           ) : (
             <>
+              <Link href="/recovery" className="text-xs font-bold text-amber-400/90 hover:text-amber-300 transition-colors uppercase tracking-wider flex items-center gap-1.5 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
+                <KeyRound className="w-3.5 h-3.5" /> Recover Locker
+              </Link>
               <Link href="/login" className="text-sm font-semibold text-white/80 hover:text-white transition-colors tracking-wide uppercase">Login</Link>
               <Link href="/signup" className="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 uppercase tracking-wide">
                 Sign Up
@@ -150,6 +153,9 @@ export const Navbar: React.FC = () => {
                 </>
               ) : (
                 <>
+                  <Link href="/recovery" onClick={() => setIsMobileMenuOpen(false)} className="text-base font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                    <KeyRound className="w-4 h-4" /> Recover Locker
+                  </Link>
                   <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-white/80 uppercase tracking-widest">Login</Link>
                   <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-primary uppercase tracking-widest">Sign Up</Link>
                 </>
