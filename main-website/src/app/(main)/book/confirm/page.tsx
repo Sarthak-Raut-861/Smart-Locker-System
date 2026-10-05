@@ -72,8 +72,8 @@ function BookingConfirmInner() {
   const { user, initAuth } = useAuthStore();
   const { cleanupExpiredLocker } = useLockerStore();
 
-  // Razorpay Payment Gateway active (can be overridden with ?bypass=true for testing if needed)
-  const isBypassActive = process.env.NEXT_PUBLIC_BYPASS_PAYMENT === 'true' || searchParams.get('bypass') === 'true';
+  // Razorpay Payment Gateway temporarily turned off (direct instant booking active)
+  const isBypassActive = true;
 
   const [selectedLocker, setSelectedLocker] = useState<any>(null);
   const [duration, setDuration] = useState(1); // Hours
@@ -603,7 +603,7 @@ function BookingConfirmInner() {
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    {isBypassActive ? 'Bypass & Book' : 'Checkout'} 
+                    {isBypassActive ? 'Confirm & Reserve' : 'Checkout'} 
                     <Zap className={`w-4 h-4 group-hover:scale-125 transition-transform ${isBypassActive ? 'fill-black' : 'fill-white'}`} />
                   </>
                 )}
