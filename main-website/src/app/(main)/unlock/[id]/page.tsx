@@ -18,7 +18,11 @@ import {
   DoorOpen,
   DoorClosed,
   Box,
-  PackageCheck
+  PackageCheck,
+  Ticket,
+  Train,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { db, rtdb } from '@/lib/firebase/config';
@@ -53,6 +57,9 @@ export default function UnlockPage() {
   const [showExtension, setShowExtension] = useState(false);
   const [extending, setExtending] = useState(false);
   const [creditsAwarded, setCreditsAwarded] = useState<number | null>(null);
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [copiedBookingId, setCopiedBookingId] = useState(false);
+  const [copiedPnr, setCopiedPnr] = useState(false);
   const awardTriggered = useRef(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -88,6 +95,14 @@ export default function UnlockPage() {
 
       setLockerData(data);
       setLoading(false);
+
+      if (data.bookingId) {
+        getDoc(doc(db, "bookings", data.bookingId)).then((bSnap) => {
+          if (bSnap.exists()) {
+            setBookingDetails(bSnap.data());
+          }
+        }).catch((e) => console.warn('Failed to load booking details:', e));
+      }
 
       // Detection for early termination (Transition from ACTIVE to AVAILABLE)
       if (data.status === 'AVAILABLE' && prevData?.status === 'ACTIVE' && !awardTriggered.current) {
@@ -347,11 +362,54 @@ export default function UnlockPage() {
 
   return (
     <div className="container mx-auto px-6 py-8 max-w-2xl">
-      <div className="mb-8 text-center md:text-left">
-        <h1 className="text-2xl font-black text-white font-outfit uppercase italic tracking-tighter leading-none mb-1">
-          Locker Access <span className="text-primary italic">{lockerId}</span>
-        </h1>
-        <p className="text-gray-600 text-[9px] font-bold uppercase tracking-widest">Digital-Hardware Synchronization System.</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="text-center md:text-left">
+          <h1 className="text-2xl font-black text-white font-outfit uppercase italic tracking-tighter leading-none mb-1">
+            Locker Access <span className="text-primary italic">#{lockerId}</span>
+          </h1>
+          <p className="text-gray-600 text-[9px] font-bold uppercase tracking-widest">Digital-Hardware Synchronization System.</p>
+        </div>
+
+        {(lockerData?.bookingId || bookingDetails?.pnr) && (
+          <div className="flex items-center gap-2 self-center md:self-auto flex-wrap justify-center">
+            {lockerData?.bookingId && (
+              <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                <Ticket className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="font-mono text-xs font-bold text-white">{lockerData.bookingId}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(lockerData.bookingId);
+                    setCopiedBookingId(true);
+                    setTimeout(() => setCopiedBookingId(false), 2000);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                  title="Copy Booking ID"
+                >
+                  {copiedBookingId ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+            )}
+            {bookingDetails?.pnr && (
+              <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                <Train className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-mono text-xs font-bold text-emerald-300">{bookingDetails.pnr}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(bookingDetails.pnr);
+                    setCopiedPnr(true);
+                    setTimeout(() => setCopiedPnr(false), 2000);
+                  }}
+                  className="text-gray-400 hover:text-emerald-300 transition-colors"
+                  title="Copy Train PNR"
+                >
+                  {copiedPnr ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">

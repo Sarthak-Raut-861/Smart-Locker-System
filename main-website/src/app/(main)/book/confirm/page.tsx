@@ -24,7 +24,7 @@ import { ref, update } from 'firebase/database';
 import { encryptData, hashPIN } from '@/lib/crypto';
 import { syncHardwareAction } from '@/app/actions/syncHardware';
 import { generateEmergencyRecoveryCode, hashEmergencyRecoveryCode } from '@/lib/recovery/recoveryCrypto';
-import { KeyRound, ShieldAlert, Copy, Check } from 'lucide-react';
+import { KeyRound, ShieldAlert, Copy, Check, Ticket, Train } from 'lucide-react';
 
 
 // Passenger Pricing Engine: Indicative railway coach locker pricing (Min 1 hr, Max 48 hrs)
@@ -83,6 +83,10 @@ function BookingConfirmInner() {
   const [generatedPin, setGeneratedPin] = useState('');
   const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState('');
   const [recoveryCodeCopied, setRecoveryCodeCopied] = useState(false);
+  const [generatedBookingId, setGeneratedBookingId] = useState('');
+  const [generatedPnr, setGeneratedPnr] = useState('');
+  const [bookingIdCopied, setBookingIdCopied] = useState(false);
+  const [pnrCopied, setPnrCopied] = useState(false);
   const [pricing, setPricing] = useState<any>(null);
   const [leftBehindTime, setLeftBehindTime] = useState<number>(0);
   const [leftBehindPenalty, setLeftBehindPenalty] = useState<number>(0);
@@ -222,8 +226,10 @@ function BookingConfirmInner() {
           recoveryCodeHash,
         });
 
-        // Store generated recovery code in component state for display
+        // Store generated recovery code and booking references in component state for display
         setGeneratedRecoveryCode(recoveryCode);
+        setGeneratedBookingId(bookingId);
+        setGeneratedPnr(pnr);
 
         if (useCredits && (user?.credits || 0) > 0) {
           const creditsToDeduct = Math.ceil(creditDiscount * 10);
@@ -378,7 +384,7 @@ function BookingConfirmInner() {
           <h2 className="text-2xl md:text-3xl font-black text-white mb-2 font-outfit uppercase italic leading-none">Locker Reserved!</h2>
           <p className="text-gray-400 text-xs mb-6 font-medium">Locker #{selectedLocker?.id} is now locked and ready for your luggage.</p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Module 1: Access PIN */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5 relative text-center">
                <div className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center gap-1.5">
@@ -412,11 +418,64 @@ function BookingConfirmInner() {
             </div>
           </div>
 
+          {/* Module 3: Booking Reference & Train PNR */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left flex justify-between items-center">
+              <div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                  <Ticket className="w-3.5 h-3.5 text-primary" /> Booking ID
+                </div>
+                <div className="font-mono text-xs font-bold text-white tracking-wide">
+                  {generatedBookingId || 'book_...'}
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (generatedBookingId) {
+                    navigator.clipboard.writeText(generatedBookingId);
+                    setBookingIdCopied(true);
+                    setTimeout(() => setBookingIdCopied(false), 2000);
+                  }
+                }}
+                className="text-[10px] font-bold text-primary hover:text-white px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-all flex items-center gap-1 shrink-0"
+              >
+                {bookingIdCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {bookingIdCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left flex justify-between items-center">
+              <div>
+                <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                  <Train className="w-3.5 h-3.5 text-emerald-400" /> Train PNR
+                </div>
+                <div className="font-mono text-xs font-bold text-emerald-300 tracking-wider">
+                  {generatedPnr || 'PNR...'}
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (generatedPnr) {
+                    navigator.clipboard.writeText(generatedPnr);
+                    setPnrCopied(true);
+                    setTimeout(() => setPnrCopied(false), 2000);
+                  }
+                }}
+                className="text-[10px] font-bold text-emerald-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center gap-1 shrink-0"
+              >
+                {pnrCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {pnrCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 mb-6 text-left flex items-start gap-3">
              <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
              <div className="text-[11px] text-amber-200/90 leading-relaxed">
                <strong className="text-amber-400 font-bold block mb-0.5">Emergency Locker Access Notice</strong>
-               Write down or store your <strong>Recovery Code</strong> separately from your phone. If you lose your phone during travel, you will need this code at <strong>/recovery</strong> to generate a temporary PIN.
+               Save your <strong>Booking ID</strong> or <strong>Train PNR</strong> along with your <strong>Recovery Code</strong>. If you lose your phone during travel, you can recover your locker at <strong>/recovery</strong> using your <strong>Locker #{selectedLocker?.id}</strong>, <strong>Booking ID</strong>, or <strong>Train PNR</strong>!
              </div>
           </div>
 
@@ -465,19 +524,36 @@ function BookingConfirmInner() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/2 p-4 rounded-xl border border-white/5">
-              <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
+              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
                 <div className="w-1 h-1 rounded-full bg-primary" /> Station
               </div>
-              <div className="text-white text-sm font-bold">Pune Junction</div>
+              <div className="text-white text-xs font-bold">Pune Junction</div>
             </div>
-            <div className="bg-white/2 p-4 rounded-xl border border-white/5">
-              <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
+              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-primary" /> Train
+              </div>
+              <div className="text-white text-xs font-bold font-mono">12124 Exp</div>
+            </div>
+            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
+              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
                  <div className="w-1 h-1 rounded-full bg-primary" /> Coach
               </div>
-              <div className="text-white text-sm font-bold">S3</div>
+              <div className="text-white text-xs font-bold">S3</div>
             </div>
+            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
+              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                 <div className="w-1 h-1 rounded-full bg-primary" /> Seat
+              </div>
+              <div className="text-white text-xs font-bold">42</div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-400">
+            <Ticket className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>A <strong>Train PNR</strong> and unique <strong>Booking ID</strong> will be generated for your digital luggage pass upon confirmation.</span>
           </div>
         </div>
 

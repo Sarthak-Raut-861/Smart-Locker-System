@@ -38,9 +38,10 @@ export default function EmergencyRecoveryPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Step 1: Booking Details
-  const [bookingId, setBookingId] = useState('');
-  const [pnr, setPnr] = useState('');
   const [passengerName, setPassengerName] = useState('');
+  const [lockerInput, setLockerInput] = useState('');
+  const [pnr, setPnr] = useState('');
+  const [bookingId, setBookingId] = useState('');
   const [coach, setCoach] = useState('');
   const [seat, setSeat] = useState('');
 
@@ -118,8 +119,8 @@ export default function EmergencyRecoveryPage() {
       setError('Please provide the passenger full name.');
       return;
     }
-    if (!bookingId.trim() && !pnr.trim()) {
-      setError('Please enter either a Booking ID or Train PNR.');
+    if (!lockerInput.trim() && !bookingId.trim() && !pnr.trim()) {
+      setError('Please enter your Locker Number, Booking ID, or Train PNR.');
       return;
     }
 
@@ -131,9 +132,10 @@ export default function EmergencyRecoveryPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          passengerName: passengerName.trim(),
+          lockerId: lockerInput.trim(),
           bookingId: bookingId.trim(),
           pnr: pnr.trim(),
-          passengerName: passengerName.trim(),
           coach: coach.trim(),
           seat: seat.trim(),
         }),
@@ -330,20 +332,34 @@ export default function EmergencyRecoveryPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1">
-                      Booking ID (Optional)
+                {/* Locker Number (Easiest for lost-phone passengers) */}
+                <div className="space-y-1.5 text-left">
+                  <div className="flex justify-between items-center ml-1">
+                    <label className="text-xs font-bold text-primary uppercase tracking-wider">
+                      Locker Number (Recommended)
                     </label>
-                    <input
-                      type="text"
-                      value={bookingId}
-                      onChange={(e) => setBookingId(e.target.value)}
-                      placeholder="book_174..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all font-mono"
-                    />
+                    <span className="text-[10px] text-gray-500 font-bold uppercase">e.g. 4 or 18</span>
                   </div>
+                  <input
+                    type="text"
+                    value={lockerInput}
+                    onChange={(e) => setLockerInput(e.target.value)}
+                    placeholder="e.g. 4"
+                    className="w-full bg-primary/10 border border-primary/30 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-outfit font-black text-lg"
+                  />
+                  <p className="text-[10px] text-gray-500 ml-1">
+                    If you don&apos;t know your Booking ID or PNR, simply enter your Locker Number above.
+                  </p>
+                </div>
 
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+                  <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest leading-none">
+                    <span className="bg-[#0f172a] px-3 text-gray-500">OR PROVIDE PNR / BOOKING ID</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5 text-left">
                     <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1">
                       Train PNR (Alternative)
@@ -353,7 +369,20 @@ export default function EmergencyRecoveryPage() {
                       value={pnr}
                       onChange={(e) => setPnr(e.target.value)}
                       placeholder="e.g. PNR84729103"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50 transition-all font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-bold text-gray-300 uppercase tracking-wider ml-1">
+                      Booking ID (Alternative)
+                    </label>
+                    <input
+                      type="text"
+                      value={bookingId}
+                      onChange={(e) => setBookingId(e.target.value)}
+                      placeholder="book_174..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50 transition-all font-mono"
                     />
                   </div>
                 </div>

@@ -110,6 +110,7 @@ interface BookingDoc {
 export async function verifyBookingForRecovery(params: {
   bookingId?: string;
   pnr?: string;
+  lockerId?: string | number;
   passengerName: string;
   trainNumber?: string;
   coach?: string;
@@ -134,7 +135,7 @@ export async function verifyBookingForRecovery(params: {
   let bookingData: BookingDoc | null = null;
   let bookingDocId: string = '';
 
-  // 1. Locate booking by Booking ID or PNR
+  // 1. Locate booking by Booking ID
   if (params.bookingId?.trim()) {
     const bookingRef = doc(db, 'bookings', params.bookingId.trim());
     const snap = await getDoc(bookingRef);
@@ -144,6 +145,7 @@ export async function verifyBookingForRecovery(params: {
     }
   }
 
+  // 2. Locate booking by PNR
   if (!bookingData && params.pnr?.trim()) {
     const pnrQuery = query(collection(db, 'bookings'), where('pnr', '==', params.pnr.trim()), limit(1));
     const snaps = await getDocs(pnrQuery);
@@ -153,10 +155,45 @@ export async function verifyBookingForRecovery(params: {
     }
   }
 
+  // 3. Locate booking by Locker Number
+  if (!bookingData && params.lockerId) {
+    const rawLockerId = String(params.lockerId).trim().replace(/^locker_/i, '').replace(/^#/i, '');
+    const lockerDocRef = doc(db, 'lockers', `locker_${rawLockerId}`);
+    const lockerSnap = await getDoc(lockerDocRef);
+    if (lockerSnap.exists()) {
+      const lData = lockerSnap.data();
+      if (lData.bookingId) {
+        const bSnap = await getDoc(doc(db, 'bookings', lData.bookingId));
+        if (bSnap.exists()) {
+          bookingData = bSnap.data() as BookingDoc;
+          bookingDocId = bSnap.id;
+        }
+      }
+    }
+  }
+
+  // 4. Fallback: Search active bookings matching passenger name
+  if (!bookingData && passengerName) {
+    try {
+      const activeQuery = query(collection(db, 'bookings'), where('status', 'in', ['PAID', 'ACTIVE']), limit(15));
+      const snaps = await getDocs(activeQuery);
+      for (const d of snaps.docs) {
+        const b = d.data() as BookingDoc;
+        if (b.userName && calculateNameSimilarity(passengerName, b.userName) >= 0.7) {
+          bookingData = b;
+          bookingDocId = d.id;
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn('Active name query fallback:', e);
+    }
+  }
+
   if (!bookingData) {
     return {
       success: false,
-      message: 'No matching booking found for the provided Booking ID / PNR.',
+      message: 'No matching booking found. Please check your Locker Number, Booking ID, or Train PNR.',
       status: 'DENIED',
     };
   }
