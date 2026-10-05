@@ -24,8 +24,10 @@ import {
 } from './recoveryCrypto';
 import {
   getIdentityVerificationProvider,
-  calculateNameSimilarity,
 } from './demoDigiLockerProvider';
+import {
+  calculateNameSimilarity,
+} from './identityProvider';
 
 const RTDB_SECRET = 'ehwg3KYlrxk8jVP5wOQcX4YUZ66IZ1h1aHme2Uu';
 const RTDB_URL = 'https://asep-smart-locker-default-rtdb.asia-southeast1.firebasedatabase.app';
@@ -89,6 +91,19 @@ export async function logRecoveryAudit(event: RecoveryAuditEvent) {
   }
 }
 
+interface BookingDoc {
+  id?: string;
+  lockerId?: string | number;
+  userName?: string;
+  pnr?: string;
+  trainNumber?: string;
+  coach?: string;
+  seat?: string;
+  status?: string;
+  pin?: string;
+  recoveryCodeHash?: string;
+}
+
 /**
  * STEP 1: Verify Booking Details
  */
@@ -116,7 +131,7 @@ export async function verifyBookingForRecovery(params: {
     return { success: false, message: 'Passenger name is required.', status: 'DENIED' };
   }
 
-  let bookingData: Record<string, unknown> | null = null;
+  let bookingData: BookingDoc | null = null;
   let bookingDocId: string = '';
 
   // 1. Locate booking by Booking ID or PNR
@@ -124,7 +139,7 @@ export async function verifyBookingForRecovery(params: {
     const bookingRef = doc(db, 'bookings', params.bookingId.trim());
     const snap = await getDoc(bookingRef);
     if (snap.exists()) {
-      bookingData = snap.data();
+      bookingData = snap.data() as BookingDoc;
       bookingDocId = snap.id;
     }
   }
@@ -133,7 +148,7 @@ export async function verifyBookingForRecovery(params: {
     const pnrQuery = query(collection(db, 'bookings'), where('pnr', '==', params.pnr.trim()), limit(1));
     const snaps = await getDocs(pnrQuery);
     if (!snaps.empty) {
-      bookingData = snaps.docs[0].data();
+      bookingData = snaps.docs[0].data() as BookingDoc;
       bookingDocId = snaps.docs[0].id;
     }
   }
@@ -218,8 +233,8 @@ export async function verifyBookingForRecovery(params: {
     requestId,
     booking: {
       id: bookingDocId,
-      lockerId: bookingData.lockerId,
-      userName: bookingData.userName,
+      lockerId: bookingData.lockerId || 'N/A',
+      userName: bookingData.userName || '',
       hasRecoveryCode: !!bookingData.recoveryCodeHash,
     },
     message: 'Booking details verified. Please proceed with identity verification.',
@@ -259,7 +274,7 @@ export async function verifyIdentityForRecovery(params: {
   // Fetch original booking to get canonical owner name
   const bookingRef = doc(db, 'bookings', record.bookingId);
   const bookingSnap = await getDoc(bookingRef);
-  const expectedName = bookingSnap.exists() ? bookingSnap.data().userName : record.passengerName;
+  const expectedName = (bookingSnap.exists() ? (bookingSnap.data() as BookingDoc).userName : record.passengerName) || '';
 
   const provider = getIdentityVerificationProvider(true);
   const verificationResult = await provider.verifyIdentity({
@@ -397,10 +412,10 @@ export async function approveRecoveryAndIssuePin(params: {
   if (!bookingSnap.exists()) {
     return { success: false, message: 'Booking reference not found.', status: 'DENIED' };
   }
-  const bookingData = bookingSnap.data();
+  const bookingData = bookingSnap.data() as BookingDoc;
 
   // Validate recovery code
-  const isMatch = verifyEmergencyRecoveryCode(params.recoveryCode, bookingData.recoveryCodeHash);
+  const isMatch = verifyEmergencyRecoveryCode(params.recoveryCode, bookingData.recoveryCodeHash || '');
   const now = Date.now();
 
   if (!isMatch) {

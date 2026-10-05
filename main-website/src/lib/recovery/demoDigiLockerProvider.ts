@@ -5,6 +5,8 @@ import {
   calculateNameSimilarity,
 } from './identityProvider';
 
+export { calculateNameSimilarity, normalizeName } from './identityProvider';
+
 /**
  * Demo DigiLocker Identity Verification Provider
  *
