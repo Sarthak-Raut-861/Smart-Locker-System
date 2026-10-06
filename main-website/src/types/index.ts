@@ -22,14 +22,9 @@ export interface Booking {
   startTime: number;
   endTime?: number;
   status: 'ACTIVE' | 'CONFIRMED' | 'COMPLETED' | 'EXPIRED';
-  createdAt: number | string;
+  createdAt: any;
   pin?: string;
   duration?: number;
-  pnr?: string;
-  trainNumber?: string;
-  coach?: string;
-  seat?: string;
-  recoveryCodeHash?: string;
 }
 
 export interface Alert {
@@ -67,7 +62,7 @@ export interface AdminLog {
   adminId: string;
   adminEmail: string;
   timestamp: number;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, any>;
 }
 
 export interface MaintenanceLog {

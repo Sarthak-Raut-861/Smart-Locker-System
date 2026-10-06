@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Server, Activity, AlertCircle, 
   History, BarChart3, Banknote, ScrollText, 
-  Wrench, Settings, LogOut, RefreshCw, Layers, ShieldAlert
+  Wrench, Settings, LogOut, RefreshCw, Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -17,7 +17,6 @@ const NAV_ITEMS = [
   { href: '/admin',            label: 'Dashboard',      icon: LayoutDashboard },
   { href: '/admin/lockers',    label: 'Lockers',         icon: Server          },
   { href: '/admin/sessions',   label: 'Active Sessions', icon: Activity        },
-  { href: '/admin/recovery',   label: 'Emergency Recovery', icon: ShieldAlert  },
   { href: '/admin/alerts',     label: 'Alerts',          icon: AlertCircle, badge: true },
   { href: '/admin/history',    label: 'History',         icon: History         },
   { href: '/admin/analytics',  label: 'Analytics',       icon: BarChart3       },

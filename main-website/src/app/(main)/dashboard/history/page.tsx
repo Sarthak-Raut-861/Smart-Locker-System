@@ -12,11 +12,7 @@ import {
   IndianRupee,
   Loader2,
   ShieldCheck,
-  ReceiptText,
-  Ticket,
-  Train,
-  Copy,
-  Check
+  ReceiptText
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { db } from '@/lib/firebase/config';
@@ -33,8 +29,6 @@ const HistoryCard = ({ entry }: { entry: any }) => {
   });
 
   const amount = Number(entry.amount || 0);
-  const [copiedId, setCopiedId] = useState(false);
-  const [copiedPnr, setCopiedPnr] = useState(false);
 
   return (
     <motion.div
@@ -46,87 +40,34 @@ const HistoryCard = ({ entry }: { entry: any }) => {
         <ReceiptText className="w-16 h-16 text-white" />
       </div>
 
-      <div className="flex justify-between items-start mb-4 pb-4 border-b border-white/5 relative z-10">
+      <div className="flex justify-between items-start mb-5 pb-5 border-b border-white/5 relative z-10">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center font-outfit text-xl font-black text-primary italic">
-            #{entry.lockerId}
+            {entry.lockerId}
           </div>
           <div>
-            <h4 className="text-white font-bold text-sm tracking-tight font-outfit">
-              Pune Junction • Coach {entry.coach || 'S3'} (Seat {entry.seat || '42'})
-            </h4>
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase tracking-[0.15em] mt-1.5">
+            <h4 className="text-white font-bold text-sm tracking-tight font-outfit">Pune Junction, Coach S3</h4>
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em] mt-2">
               <Calendar className="w-3.5 h-3.5 text-primary/60" /> {date}
             </div>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-1.5">Amount Paid</div>
+          <div className="text-[10px] font-bold text-gray-700 uppercase tracking-widest leading-none mb-1.5">Amount Paid</div>
           <div className="text-2xl font-black text-white font-outfit tracking-tight">₹{amount.toFixed(0)}</div>
         </div>
       </div>
 
-      {/* Booking Reference & Train PNR Badges */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4 relative z-10">
-        {/* Booking ID */}
-        <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Ticket className="w-3.5 h-3.5 text-primary shrink-0" />
-            <div className="truncate">
-              <div className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Booking ID</div>
-              <div className="text-[11px] font-mono font-bold text-white truncate">{entry.id}</div>
-            </div>
-          </div>
-          <button 
-            type="button"
-            onClick={() => {
-              navigator.clipboard.writeText(entry.id);
-              setCopiedId(true);
-              setTimeout(() => setCopiedId(false), 2000);
-            }}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-primary/20 text-gray-400 hover:text-white transition-colors shrink-0 ml-1"
-            title="Copy Booking ID"
-          >
-            {copiedId ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-          </button>
-        </div>
-
-        {/* Train PNR */}
-        <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <Train className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <div className="truncate">
-              <div className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Train PNR</div>
-              <div className="text-[11px] font-mono font-bold text-emerald-300 truncate">{entry.pnr || 'PNR Assigned'}</div>
-            </div>
-          </div>
-          {entry.pnr && (
-            <button 
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(entry.pnr);
-                setCopiedPnr(true);
-                setTimeout(() => setCopiedPnr(false), 2000);
-              }}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-300 transition-colors shrink-0 ml-1"
-              title="Copy Train PNR"
-            >
-              {copiedPnr ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6 relative z-10 pt-2 border-t border-white/5">
+      <div className="grid grid-cols-2 gap-6 relative z-10">
         <div className="space-y-1">
-          <div className="text-[9px] font-black text-gray-500 uppercase tracking-[0.25em]">Total Duration</div>
+          <div className="text-[9px] font-black text-gray-700 uppercase tracking-[0.3em]">Total Duration</div>
           <div className="text-xs font-bold text-white tracking-widest uppercase">
             {entry.duration > 300000 ? (entry.duration / 3600000).toFixed(0) : entry.duration} {entry.duration > 300000 ? 'Hours' : 'Hr'}
           </div>
         </div>
         <div className="space-y-1 text-right">
-          <div className="text-[9px] font-black text-gray-500 uppercase tracking-[0.25em]">Unit Rate</div>
-          <div className="text-xs font-bold text-gray-400 tracking-widest uppercase">₹{entry.rate || 25}/hr</div>
+          <div className="text-[9px] font-black text-gray-700 uppercase tracking-[0.3em]">Unit Rate</div>
+          <div className="text-xs font-bold text-gray-500 tracking-widest uppercase">₹{entry.rate || 25}/hr</div>
         </div>
       </div>
     </motion.div>

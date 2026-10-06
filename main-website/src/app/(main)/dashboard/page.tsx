@@ -70,14 +70,7 @@ const ActiveLockerCard = ({ locker, onUnlock }: any) => {
       className="active-box p-6 rounded-2xl flex justify-between items-center cursor-pointer transition-all border border-white/10 bg-white/[0.03] backdrop-blur-md hover:scale-[1.01] hover:border-primary group"
     >
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="text-white font-bold text-lg font-outfit">Locker #{locker.id}</div>
-          {locker.bookingId && (
-            <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md">
-              ID: {locker.bookingId}
-            </span>
-          )}
-        </div>
+        <div className="text-white font-bold text-lg font-outfit">Locker {locker.id}</div>
         <div className="text-sm text-gray-500 font-medium leading-relaxed">
           Pin: <strong className="text-primary tracking-[0.3em] font-black text-base font-outfit">{decryptData(locker.encryptedPin || '') || '----'}</strong><br />
           <span className={locker.sessionEnd ? "text-gray-500" : "text-primary"}>{timeLeft}</span>

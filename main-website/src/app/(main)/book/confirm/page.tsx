@@ -23,8 +23,6 @@ import { collection, doc, runTransaction, getDoc } from 'firebase/firestore';
 import { ref, update } from 'firebase/database';
 import { encryptData, hashPIN } from '@/lib/crypto';
 import { syncHardwareAction } from '@/app/actions/syncHardware';
-import { generateEmergencyRecoveryCode, hashEmergencyRecoveryCode } from '@/lib/recovery/recoveryCrypto';
-import { KeyRound, ShieldAlert, Copy, Check, Ticket, Train } from 'lucide-react';
 
 
 // Passenger Pricing Engine: Indicative railway coach locker pricing (Min 1 hr, Max 48 hrs)
@@ -72,8 +70,8 @@ function BookingConfirmInner() {
   const { user, initAuth } = useAuthStore();
   const { cleanupExpiredLocker } = useLockerStore();
 
-  // Razorpay Payment Gateway temporarily turned off (direct instant booking active)
-  const isBypassActive = true;
+  // Razorpay Payment Gateway active (can be overridden with ?bypass=true for testing if needed)
+  const isBypassActive = process.env.NEXT_PUBLIC_BYPASS_PAYMENT === 'true' || searchParams.get('bypass') === 'true';
 
   const [selectedLocker, setSelectedLocker] = useState<any>(null);
   const [duration, setDuration] = useState(1); // Hours
@@ -81,12 +79,6 @@ function BookingConfirmInner() {
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [generatedPin, setGeneratedPin] = useState('');
-  const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState('');
-  const [recoveryCodeCopied, setRecoveryCodeCopied] = useState(false);
-  const [generatedBookingId, setGeneratedBookingId] = useState('');
-  const [generatedPnr, setGeneratedPnr] = useState('');
-  const [bookingIdCopied, setBookingIdCopied] = useState(false);
-  const [pnrCopied, setPnrCopied] = useState(false);
   const [pricing, setPricing] = useState<any>(null);
   const [leftBehindTime, setLeftBehindTime] = useState<number>(0);
   const [leftBehindPenalty, setLeftBehindPenalty] = useState<number>(0);
@@ -201,10 +193,6 @@ function BookingConfirmInner() {
             doorOpenDuration: 0 // Reset door open duration
           }, { merge: true });
 
-        const recoveryCode = generateEmergencyRecoveryCode();
-        const recoveryCodeHash = hashEmergencyRecoveryCode(recoveryCode);
-        const pnr = `PNR${Math.floor(10000000 + Math.random() * 90000000)}`;
-
         const bookingRef = doc(collection(db, "bookings"), bookingId);
         transaction.set(bookingRef, {
           id: bookingId,
@@ -218,18 +206,8 @@ function BookingConfirmInner() {
           createdAt: Date.now(),
           pin: pinHash,
           encryptedPin: pinEncrypted,
-          paymentId: paymentId || null,
-          pnr,
-          trainNumber: '12124',
-          coach: 'S3',
-          seat: '42',
-          recoveryCodeHash,
+          paymentId: paymentId || null
         });
-
-        // Store generated recovery code and booking references in component state for display
-        setGeneratedRecoveryCode(recoveryCode);
-        setGeneratedBookingId(bookingId);
-        setGeneratedPnr(pnr);
 
         if (useCredits && (user?.credits || 0) > 0) {
           const creditsToDeduct = Math.ceil(creditDiscount * 10);
@@ -371,117 +349,27 @@ function BookingConfirmInner() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md overflow-y-auto">
+      <div className="min-h-screen fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="glass-panel p-8 md:p-10 rounded-[2.5rem] max-w-lg w-full text-center relative overflow-hidden shadow-2xl my-auto"
+          className="glass-panel p-10 md:p-12 rounded-[2.5rem] max-w-md w-full text-center relative overflow-hidden shadow-2xl"
         >
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 via-primary to-indigo-500" />
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="text-emerald-500 w-8 h-8" />
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-linear-to-r from-emerald-500 to-primary" />
+          <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="text-emerald-500 w-10 h-10" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 font-outfit uppercase italic leading-none">Locker Reserved!</h2>
-          <p className="text-gray-400 text-xs mb-6 font-medium">Locker #{selectedLocker?.id} is now locked and ready for your luggage.</p>
+          <h2 className="text-3xl font-black text-white mb-3 font-outfit uppercase italic leading-none">Locker Reserved!</h2>
+          <p className="text-gray-500 text-sm mb-8 font-medium">Scan the station QR and use this PIN to access your locker.</p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* Module 1: Access PIN */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 relative text-center">
-               <div className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center gap-1.5">
-                 <LockIcon className="w-3 h-3 text-primary" /> Access PIN
-               </div>
-               <div className="text-4xl font-black text-primary tracking-[0.2em] font-outfit">{generatedPin}</div>
-               <p className="text-[10px] text-gray-500 mt-2">Enter this on the locker touchscreen keypad</p>
-            </div>
-
-            {/* Module 2: Emergency Recovery Code */}
-            <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-5 relative text-center">
-               <div className="text-indigo-400 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center justify-center gap-1.5">
-                 <ShieldAlert className="w-3 h-3 text-indigo-400" /> Recovery Code
-               </div>
-               <div className="text-xl font-mono font-black text-indigo-200 tracking-wider py-1.5">
-                 {generatedRecoveryCode || 'LNL-XXXX-XXXX'}
-               </div>
-               <button 
-                 onClick={() => {
-                   if (generatedRecoveryCode) {
-                     navigator.clipboard.writeText(generatedRecoveryCode);
-                     setRecoveryCodeCopied(true);
-                     setTimeout(() => setRecoveryCodeCopied(false), 2000);
-                   }
-                 }}
-                 className="text-[10px] font-bold text-indigo-300 hover:text-white mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 hover:bg-indigo-500/30 transition-colors"
-               >
-                 {recoveryCodeCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                 {recoveryCodeCopied ? 'Copied to Clipboard' : 'Copy Code'}
-               </button>
-            </div>
-          </div>
-
-          {/* Module 3: Booking Reference & Train PNR */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left flex justify-between items-center">
-              <div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                  <Ticket className="w-3.5 h-3.5 text-primary" /> Booking ID
-                </div>
-                <div className="font-mono text-xs font-bold text-white tracking-wide">
-                  {generatedBookingId || 'book_...'}
-                </div>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  if (generatedBookingId) {
-                    navigator.clipboard.writeText(generatedBookingId);
-                    setBookingIdCopied(true);
-                    setTimeout(() => setBookingIdCopied(false), 2000);
-                  }
-                }}
-                className="text-[10px] font-bold text-primary hover:text-white px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-all flex items-center gap-1 shrink-0"
-              >
-                {bookingIdCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                {bookingIdCopied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left flex justify-between items-center">
-              <div>
-                <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                  <Train className="w-3.5 h-3.5 text-emerald-400" /> Train PNR
-                </div>
-                <div className="font-mono text-xs font-bold text-emerald-300 tracking-wider">
-                  {generatedPnr || 'PNR...'}
-                </div>
-              </div>
-              <button 
-                type="button"
-                onClick={() => {
-                  if (generatedPnr) {
-                    navigator.clipboard.writeText(generatedPnr);
-                    setPnrCopied(true);
-                    setTimeout(() => setPnrCopied(false), 2000);
-                  }
-                }}
-                className="text-[10px] font-bold text-emerald-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-all flex items-center gap-1 shrink-0"
-              >
-                {pnrCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                {pnrCopied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 mb-6 text-left flex items-start gap-3">
-             <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-             <div className="text-[11px] text-amber-200/90 leading-relaxed">
-               <strong className="text-amber-400 font-bold block mb-0.5">Emergency Locker Access Notice</strong>
-               Save your <strong>Booking ID</strong> or <strong>Train PNR</strong> along with your <strong>Recovery Code</strong>. If you lose your phone during travel, you can recover your locker at <strong>/recovery</strong> using your <strong>Locker #{selectedLocker?.id}</strong>, <strong>Booking ID</strong>, or <strong>Train PNR</strong>!
-             </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 relative">
+             <div className="text-gray-600 text-[10px] font-bold uppercase tracking-widest mb-3">Access PIN</div>
+             <div className="text-6xl font-black text-primary tracking-[0.2em] font-outfit">{generatedPin}</div>
           </div>
 
           <button 
             onClick={() => router.push('/dashboard')}
-            className="bg-primary hover:bg-primary/90 text-white w-full py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
+            className="bg-primary hover:bg-primary/90 text-white w-full py-4 rounded-xl text-base font-bold uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
           >
             Go to Dashboard
           </button>
@@ -524,36 +412,19 @@ function BookingConfirmInner() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
-              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+              <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                 <div className="w-1 h-1 rounded-full bg-primary" /> Station
               </div>
-              <div className="text-white text-xs font-bold">Pune Junction</div>
+              <div className="text-white text-sm font-bold">Pune Junction</div>
             </div>
-            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
-              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                <div className="w-1 h-1 rounded-full bg-primary" /> Train
-              </div>
-              <div className="text-white text-xs font-bold font-mono">12124 Exp</div>
-            </div>
-            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
-              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+            <div className="bg-white/2 p-4 rounded-xl border border-white/5">
+              <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                  <div className="w-1 h-1 rounded-full bg-primary" /> Coach
               </div>
-              <div className="text-white text-xs font-bold">S3</div>
+              <div className="text-white text-sm font-bold">S3</div>
             </div>
-            <div className="bg-white/2 p-3.5 rounded-xl border border-white/5">
-              <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                 <div className="w-1 h-1 rounded-full bg-primary" /> Seat
-              </div>
-              <div className="text-white text-xs font-bold">42</div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-400">
-            <Ticket className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>A <strong>Train PNR</strong> and unique <strong>Booking ID</strong> will be generated for your digital luggage pass upon confirmation.</span>
           </div>
         </div>
 
@@ -679,7 +550,7 @@ function BookingConfirmInner() {
                   <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    {isBypassActive ? 'Confirm & Reserve' : 'Checkout'} 
+                    {isBypassActive ? 'Bypass & Book' : 'Checkout'} 
                     <Zap className={`w-4 h-4 group-hover:scale-125 transition-transform ${isBypassActive ? 'fill-black' : 'fill-white'}`} />
                   </>
                 )}

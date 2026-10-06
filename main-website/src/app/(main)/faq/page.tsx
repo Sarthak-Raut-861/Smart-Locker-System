@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronDown, HelpCircle, MessageSquare, Zap, Shield, Wallet, Box, KeyRound, ShieldAlert } from 'lucide-react';
+import { Search, ChevronDown, HelpCircle, MessageSquare, Zap, Shield, Wallet, Box } from 'lucide-react';
 
 const FAQ_DATA = [
   // Booking Questions
@@ -21,11 +20,6 @@ const FAQ_DATA = [
     q: "What if I lose my PIN code?",
     a: "Don't worry! You can view your active PINs anytime in your dashboard. If you're still having trouble, contact our support team with your booking details, and we'll help you regain access.",
     category: "booking"
-  },
-  {
-    q: "Lost your phone? How do I recover my locker without my device?",
-    a: "If you lose your phone during your journey, use our Emergency Recovery system at /recovery from any available browser or station kiosk. Enter your booking details (Booking ID or Train PNR), verify your identity via DigiLocker, and provide your Emergency Recovery Code to receive an immediate 5-minute temporary unlock PIN.",
-    category: "security"
   },
   // Payment Questions
   {
@@ -151,33 +145,6 @@ export default function FAQPage() {
           Everything you need to know about the LocknLeave Ecosystem.
         </motion.p>
       </div>
-
-      {/* Emergency Locker Recovery Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-panel p-6 rounded-3xl border-amber-500/30 bg-amber-500/10 mb-12 flex flex-col md:flex-row items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4 text-left">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-            <ShieldAlert className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-white font-bold text-base font-outfit uppercase">
-              Lost Your Phone During Travel?
-            </h3>
-            <p className="text-gray-300 text-xs mt-0.5 leading-relaxed">
-              Recover access to your active locker immediately using DigiLocker identity verification and your recovery code.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/recovery"
-          className="bg-amber-500 hover:bg-amber-600 text-black px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap inline-flex items-center gap-2 shadow-lg shadow-amber-500/20"
-        >
-          <KeyRound className="w-4 h-4" /> Recover My Locker
-        </Link>
-      </motion.div>
 
       <div className="space-y-12 mb-20">
         <div className="relative group">
