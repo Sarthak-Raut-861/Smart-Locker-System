@@ -13,9 +13,10 @@ export default function HistoryPage() {
 
   const filtered = useMemo(() => bookings.filter(b => {
     const userName = b.userName || users[b.userId]?.name || "N/A";
-    const matchUser   = !search   || userName.toLowerCase().includes(search.toLowerCase());
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q || userName.toLowerCase().includes(q) || (b.id && b.id.toLowerCase().includes(q));
     const matchLocker = !lockerId || String(b.lockerId) === lockerId;
-    return matchUser && matchLocker;
+    return matchSearch && matchLocker;
   }), [bookings, search, lockerId, users]);
 
   const handleExport = () => {
@@ -60,7 +61,7 @@ export default function HistoryPage() {
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
-            type="text" placeholder="Search user..." value={search}
+            type="text" placeholder="Search user or ID..." value={search}
             onChange={e => setSearch(e.target.value)}
             className="bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary w-52"
           />
@@ -109,7 +110,7 @@ export default function HistoryPage() {
                       transition={{ delay: Math.min(i * 0.03, 0.5) }}
                       className="border-b border-white/5 hover:bg-white/3 transition-colors"
                     >
-                      <td className="px-5 py-3 font-mono text-xs text-muted-foreground">{b.id.slice(0, 8)}…</td>
+                      <td className="px-5 py-3 font-mono text-xs text-white/90 select-all whitespace-nowrap">{b.id}</td>
                       <td className="px-5 py-3 font-bold text-white">#{b.lockerId}</td>
                       <td className="px-5 py-3 text-primary">{b.userName || users[b.userId]?.name || "N/A"}</td>
                       <td className="px-5 py-3 font-semibold text-emerald-400">₹{b.amount}</td>
